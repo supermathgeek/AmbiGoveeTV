@@ -198,7 +198,7 @@ public class AmbiService extends Service {
 
         if(!tvInteractive)publishStatus("TV en veille — lumière normale");
         else if(!autoEnabled)publishStatus(onCount>0?"Lumière normale":"Lumière normale — lampes éteintes");
-        else if(total==0)publishStatus("Ajoute une lampe Govee");
+        else if(total==0)publishStatus(ConfigStore.goveeLights(this).isEmpty()?"Ajoute une lampe Govee":"Tous les Govee sont déconnectés");
         else if(reachableCount==0)publishStatus("Govee introuvable — vérifie Contrôle LAN");
         else if(syncCount>0)publishStatus("SYNCHRO EN DIRECT — "+syncCount+" lampe"+(syncCount>1?"s":""));
         else publishStatus("Prêt — allume une lampe configurée");
@@ -238,7 +238,7 @@ public class AmbiService extends Service {
                         double ab=ColorEngine.alpha(dt,tauBrightness);n.smoothBrightness+=(target.brightness-n.smoothBrightness)*ab;
                     }
                     int r=clamp((int)Math.round(n.smoothR),0,255),gg=clamp((int)Math.round(n.smoothG),0,255),b=clamp((int)Math.round(n.smoothB),0,255);
-                    int brightness=clamp((int)Math.round(n.smoothBrightness),1,ConfigStore.maxBrightness(this));
+                    int brightness=clamp((int)Math.round(n.smoothBrightness),1,80);
                     int colorDelta=Math.abs(r-n.lastR)+Math.abs(gg-n.lastG)+Math.abs(b-n.lastB);
                     if(colorDelta>=2){govee.setColor(n.config,r,gg,b);n.lastR=r;n.lastG=gg;n.lastB=b;}
                     if(Math.abs(brightness-n.lastBrightness)>=1&&now-n.lastBrightnessNs>=250_000_000L){govee.setBrightness(n.config,brightness);n.lastBrightness=brightness;n.lastBrightnessNs=now;}

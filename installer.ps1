@@ -8,7 +8,7 @@ function Step($t){Write-Host "";Write-Host "==> $t" -ForegroundColor Cyan}
 function Download($u,$o){if(!(Test-Path $o)){Invoke-WebRequest -Uri $u -OutFile $o -UseBasicParsing}}
 
 Write-Host "==============================================" -ForegroundColor Magenta
-Write-Host "  AmbiGovee 1.4 - installation Android TV" -ForegroundColor Magenta
+Write-Host "  AmbiGovee 1.5 - installation Android TV" -ForegroundColor Magenta
 Write-Host "==============================================" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "Avant de continuer sur la TV :" -ForegroundColor Yellow
@@ -42,9 +42,9 @@ $env:ANDROID_HOME=$Sdk;$env:ANDROID_SDK_ROOT=$Sdk;(("y`n")*120)|&$sdkmanager --s
 Step "Gradle"
 $gd=Join-Path $Tools "gradle-8.9";$gradle=Join-Path $gd "bin\gradle.bat";if(!(Test-Path $gradle)){$zip=Join-Path $Tools "gradle-8.9-bin.zip";Download "https://services.gradle.org/distributions/gradle-8.9-bin.zip" $zip;Expand-Archive $zip $Tools -Force}
 
-Step "Compilation AmbiGovee 1.4"
+Step "Compilation AmbiGovee 1.5"
 &$gradle -p $Root :app:assembleDebug --no-daemon;if($LASTEXITCODE-ne 0){throw "Compilation Android : echec"}
-$apk=Join-Path $Root "app\build\outputs\apk\debug\app-debug.apk";Copy-Item $apk (Join-Path $Root "AmbiGovee-1.4.apk") -Force
+$apk=Join-Path $Root "app\build\outputs\apk\debug\app-debug.apk";Copy-Item $apk (Join-Path $Root "AmbiGovee-1.5.apk") -Force
 
 $adb=Join-Path $Sdk "platform-tools\adb.exe";&$adb start-server|Out-Null
 $defaultIp="";if($defaultIp){$prompt="IP de la TV Philips [$defaultIp]"}else{$prompt="IP de la TV Philips (Parametres > Reseau)"}
@@ -56,12 +56,12 @@ Step "Mise a jour / installation"
 $out=&$adb install -r $apk 2>&1|Out-String;Write-Host $out
 if($out -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE"){
  Write-Host "Ancienne signature detectee. Cette transition n'arrive qu'une fois." -ForegroundColor Yellow
- $answer=Read-Host "Desinstaller l'ancienne AmbiGovee et installer la v1.4 ? (O/N)"
+ $answer=Read-Host "Desinstaller l'ancienne AmbiGovee et installer la v1.5 ? (O/N)"
  if($answer -match '^[OoYy]'){&$adb uninstall fr.ambigovee.tv|Out-Host;&$adb install $apk|Out-Host}else{throw "Installation annulee."}
 }elseif($LASTEXITCODE-ne 0 -and $out -notmatch "Success"){throw "ADB n'a pas pu installer l'APK."}
 
 Step "Lancement";&$adb shell am start -n "fr.ambigovee.tv/.MainActivity"|Out-Host
-Write-Host "";Write-Host "AMBIGOVEE 1.4 INSTALLE" -ForegroundColor Green
+Write-Host "";Write-Host "AMBIGOVEE 1.5 INSTALLE" -ForegroundColor Green
 Write-Host "Ouvre AmbiGovee sur la TV : l assistant va associer Philips par PIN puis scanner les appareils Govee LAN."
 Write-Host "Les mises a jour conserveront la configuration si l APK garde la meme signature."
 

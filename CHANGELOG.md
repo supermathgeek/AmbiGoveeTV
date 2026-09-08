@@ -1,6 +1,18 @@
 # Changelog
 
-## 1.4.0
+## 1.5.0
+
+- Nouvelle interface TV plus simple et plus propre.
+- Suppression du réglage manuel de luminosité : elle suit automatiquement l’Ambilight.
+- Connexion / déconnexion individuelle des appareils Govee sans les supprimer.
+- Suppression définitive séparée d’un appareil.
+- Déconnexion / réassociation de la TV Philips sans perdre les lampes Govee.
+- Bouton de vérification manuelle des mises à jour.
+- Vérification GitHub automatique à chaque lancement pour les builds officiels.
+- Assets GitHub stables `AmbiGoveeTV.apk` et `AmbiGoveeTV-Windows.zip` pour un téléchargement direct.
+- Navigation D-pad simplifiée sur l’écran principal.
+
+## 1.5.0
 
 - support de plusieurs appareils Govee LAN en même temps ;
 - ajout/suppression de lampes depuis l'assistant ;

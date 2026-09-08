@@ -56,6 +56,10 @@ final class GoveeConfig {
         return new GoveeConfig(newIp, device, sku, position, name, enabled);
     }
 
+    GoveeConfig withEnabled(boolean value) {
+        return new GoveeConfig(ip, device, sku, position, name, value);
+    }
+
     JSONObject toJson() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("ip", ip);

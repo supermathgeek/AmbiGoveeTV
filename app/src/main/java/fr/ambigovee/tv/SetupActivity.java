@@ -37,7 +37,8 @@ public class SetupActivity extends Activity {
         ConfigStore.seedDefaults(this);
         stopService(new Intent(this, AmbiService.class));
         buildShell();
-        showStep(0);
+        int initialStep = Math.max(0, Math.min(3, getIntent().getIntExtra("start_step", 0)));
+        showStep(initialStep);
     }
 
     private void buildShell() {
@@ -136,10 +137,29 @@ public class SetupActivity extends Activity {
         sc.setMargins(0, dp(20), 0, dp(14));
         content.addView(statusCard, sc);
 
+        LinearLayout philipsActions = new LinearLayout(this);
+        philipsActions.setOrientation(LinearLayout.HORIZONTAL);
         primary = button(paired ? "RÉASSOCIER LA PHILIPS" : "ASSOCIER LA PHILIPS", 0xff35255f, 0xff7655ff);
         primary.setOnClickListener(v -> beginPair());
-        content.addView(primary, new LinearLayout.LayoutParams(dp(430), dp(60)));
-        message = body(paired ? "Connexion enregistrée. Tu peux continuer." : "Le PIN est la seule action demandée pour la Philips.");
+        LinearLayout.LayoutParams pa = new LinearLayout.LayoutParams(dp(430), dp(60));
+        philipsActions.addView(primary, pa);
+        TvButton disconnect = null;
+        if (paired) {
+            disconnect = button("DÉCONNECTER", 0xff241a22, 0xff8b4058);
+            disconnect.setOnClickListener(v -> new AlertDialog.Builder(this)
+                    .setTitle("Déconnecter la Philips ?")
+                    .setMessage("Les lampes Govee restent enregistrées. Il faudra réassocier la TV pour relancer la synchronisation.")
+                    .setNegativeButton("ANNULER", null)
+                    .setPositiveButton("DÉCONNECTER", (d,w) -> { ConfigStore.disconnectPhilips(this); showStep(1); })
+                    .show());
+            LinearLayout.LayoutParams da = new LinearLayout.LayoutParams(dp(250), dp(60)); da.setMargins(dp(12),0,0,0);
+            philipsActions.addView(disconnect, da);
+            primary.setNextFocusRightId(disconnect.getId());
+            disconnect.setNextFocusLeftId(primary.getId());
+            disconnect.setNextFocusDownId(next.getId());
+        }
+        content.addView(philipsActions);
+        message = body(paired ? "Philips connectée. Tu peux la réassocier ou la déconnecter sans supprimer tes lampes." : "Le PIN est la seule action demandée pour la Philips.");
         LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
         mp.setMargins(0, dp(16), 0, 0);
         content.addView(message, mp);
@@ -201,39 +221,69 @@ public class SetupActivity extends Activity {
     private void showGovee() {
         next.setText("CONTINUER  →");
         List<GoveeConfig> configured = ConfigStore.goveeLights(this);
-        content.addView(kicker("LUMIÈRES GOVEE"));
-        content.addView(title(configured.isEmpty() ? "Ajoute tes lumières" : configured.size() + " lumière" + (configured.size() > 1 ? "s" : "") + " configurée" + (configured.size() > 1 ? "s" : "") + " ✓"));
-        content.addView(body("Dans Govee Home, active Contrôle LAN sur chaque lampe que tu veux synchroniser. AmbiGovee les scanne ensuite sur le réseau local."));
+        int enabledCount = ConfigStore.enabledGoveeCount(this);
+        content.addView(kicker("APPAREILS GOVEE"));
+        content.addView(title(configured.isEmpty()
+                ? "Connecte tes lumières"
+                : configured.size() + " appareil" + (configured.size() > 1 ? "s" : "") + " enregistré" + (configured.size() > 1 ? "s" : "")));
+        content.addView(body("Active Contrôle LAN dans Govee Home. Une lampe déconnectée reste enregistrée dans AmbiGovee mais n'est plus pilotée."));
 
+        TvButton firstRow = null;
+        TvButton lastRow = null;
         if (!configured.isEmpty()) {
-            TextView lab = kicker("APPAREILS AJOUTÉS — clique pour changer la position ou supprimer");
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.setMargins(0, dp(18), 0, dp(8));
+            TextView lab = kicker("MES APPAREILS — OK pour gérer");
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.setMargins(0, dp(18), 0, dp(8));
             content.addView(lab, lp);
+
             TvButton previous = null;
             for (GoveeConfig g : configured) {
-                TvButton row = button("✓  " + g.displayName() + "   •   " + g.positionLabel() + "   •   " + g.ip, 0xff171d2a, 0xff7655ff);
+                String state = g.enabled ? "CONNECTÉE" : "DÉCONNECTÉE";
+                String icon = g.enabled ? "●" : "○";
+                TvButton row = button(icon + "  " + g.displayName() + "   •   " + g.positionLabel() + "   •   " + state,
+                        g.enabled ? 0xff171d2a : 0xff121620,
+                        g.enabled ? 0xff7655ff : 0xff596179);
                 row.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-                row.setPadding(dp(22),0,dp(18),0);
+                row.setPadding(dp(22), 0, dp(18), 0);
                 row.setOnClickListener(v -> editGovee(g));
-                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(56)); rp.setMargins(0, dp(5), 0, 0);
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(58));
+                rp.setMargins(0, dp(5), 0, 0);
                 content.addView(row, rp);
-                if (previous != null) { previous.setNextFocusDownId(row.getId()); row.setNextFocusUpId(previous.getId()); }
+                if (firstRow == null) firstRow = row;
+                if (previous != null) {
+                    previous.setNextFocusDownId(row.getId());
+                    row.setNextFocusUpId(previous.getId());
+                }
                 previous = row;
+                lastRow = row;
             }
         }
 
-        primary = button("＋  RECHERCHER / AJOUTER UNE LAMPE GOVEE", 0xff35255f, 0xff7655ff);
+        primary = button("＋  RECHERCHER / AJOUTER UN GOVEE", 0xff35255f, 0xff7655ff);
         primary.setOnClickListener(v -> scanGovee());
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(dp(540), dp(60)); pp.setMargins(0, dp(16), 0, 0);
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(dp(520), dp(60));
+        pp.setMargins(0, dp(16), 0, 0);
         content.addView(primary, pp);
-        message = body(configured.isEmpty()
-                ? "Positions disponibles : pièce/plafond, gauche, droite, au-dessus ou sous la TV."
-                : "Tu peux ajouter autant de lampes LAN que ton réseau et tes appareils supportent raisonnablement.");
-        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2); mp.setMargins(0, dp(12), 0, 0);
-        content.addView(message, mp);
-        next.setEnabled(!configured.isEmpty());
+
+        if (lastRow != null) {
+            lastRow.setNextFocusDownId(primary.getId());
+            primary.setNextFocusUpId(lastRow.getId());
+        }
         primary.setNextFocusDownId(next.getId());
-        primary.post(() -> primary.requestFocus());
+
+        int disconnected = configured.size() - enabledCount;
+        message = body(configured.isEmpty()
+                ? "AmbiGovee va scanner automatiquement les appareils Govee LAN disponibles sur ton réseau."
+                : enabledCount + " connecté" + (enabledCount > 1 ? "s" : "") + " • "
+                    + disconnected + " déconnecté" + (disconnected > 1 ? "s" : "")
+                    + ". Une déconnexion n'efface ni la position ni l'appareil.");
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
+        mp.setMargins(0, dp(12), 0, 0);
+        content.addView(message, mp);
+
+        next.setEnabled(!configured.isEmpty());
+        final TvButton focusTarget = firstRow != null ? firstRow : primary;
+        focusTarget.post(() -> focusTarget.requestFocus());
     }
 
     private void scanGovee() {
@@ -288,17 +338,22 @@ public class SetupActivity extends Activity {
     }
 
     private void editGovee(GoveeConfig g) {
-        final String[] labels = {"Plafond / pièce entière", "Gauche de la TV", "Au-dessus de la TV", "Droite de la TV", "Sous la TV", "SUPPRIMER CETTE LAMPE"};
+        final String toggle = g.enabled ? "DÉCONNECTER DE LA SYNCHRO" : "CONNECTER À LA SYNCHRO";
+        final String[] labels = {toggle, "Plafond / pièce entière", "Gauche de la TV", "Au-dessus de la TV", "Droite de la TV", "Sous la TV", "SUPPRIMER CET APPAREIL"};
         final String[] values = {GoveeConfig.POSITION_ROOM, GoveeConfig.POSITION_LEFT, GoveeConfig.POSITION_TOP, GoveeConfig.POSITION_RIGHT, GoveeConfig.POSITION_BOTTOM};
         new AlertDialog.Builder(this)
-                .setTitle(g.displayName() + " — " + g.positionLabel())
+                .setTitle(g.displayName() + " — " + (g.enabled ? "connectée" : "déconnectée"))
                 .setItems(labels, (dialog, which) -> {
-                    if (which == 5) {
+                    if (which == 0) {
+                        ConfigStore.setGoveeEnabled(this, g.identity(), !g.enabled);
+                        showStep(2);
+                        message.setText(g.displayName() + (g.enabled ? " déconnectée. Elle reste enregistrée." : " reconnectée à la synchronisation ✓"));
+                    } else if (which == 6) {
                         ConfigStore.removeGovee(this, g.identity());
                         showStep(2);
-                        message.setText(g.displayName() + " supprimé de la synchronisation.");
+                        message.setText(g.displayName() + " supprimée d'AmbiGovee.");
                     } else {
-                        ConfigStore.upsertGovee(this, g.withPosition(values[which]));
+                        ConfigStore.upsertGovee(this, g.withPosition(values[which - 1]));
                         showStep(2);
                         message.setText("Position mise à jour ✓");
                     }
@@ -333,12 +388,13 @@ public class SetupActivity extends Activity {
     private void runCompatibilityTest(TextView philipsResult, TextView goveeResult) {
         primary.setEnabled(false); philipsResult.setText("Philips : test du flux Ambilight…"); goveeResult.setText("Govee : test de toutes les lampes…");
         executor.execute(() -> {
-            boolean pOk=false; String pText; GoveeLan temp=null; int total=ConfigStore.goveeLights(this).size(), ok=0;
+            boolean pOk=false; String pText; GoveeLan temp=null; int total=ConfigStore.enabledGoveeCount(this), ok=0;
             try { JSONObject measured=new PhilipsClient(this).getMeasured(); pOk=measured.optJSONObject("layer1")!=null; pText=pOk?"Philips : Ambilight /measured compatible ✓":"Philips : flux Ambilight non détecté"; }
             catch(Exception e){pText="Philips : échec — "+shortError(e);}
             try {
                 temp=new GoveeLan(this);
                 for(GoveeConfig cfg:ConfigStore.goveeLights(this)){
+                    if(!cfg.enabled) continue;
                     GoveeLan.GoveeState st=temp.queryStatus(cfg);
                     if(st!=null&&st.colorCapable)ok++;
                 }
@@ -351,6 +407,7 @@ public class SetupActivity extends Activity {
 
     private void finishSetup() {
         if (!ConfigStore.isConfigured(this)) return;
+        ConfigStore.markSetupCompleted(this);
         Intent s = new Intent(this, AmbiService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(s); else startService(s);
         startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));

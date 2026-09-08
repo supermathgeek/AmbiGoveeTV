@@ -4,7 +4,7 @@ def releaseStore = System.getenv('AMBIGOVEE_KEYSTORE')
 def releaseStorePassword = System.getenv('AMBIGOVEE_STORE_PASSWORD')
 def releaseKeyAlias = System.getenv('AMBIGOVEE_KEY_ALIAS')
 def releaseKeyPassword = System.getenv('AMBIGOVEE_KEY_PASSWORD')
-def updateRepo = project.findProperty('AMBIGOVEE_REPO') ?: ''
+def updateRepo = project.findProperty('AMBIGOVEE_REPO') ?: 'supermathgeek/AmbiGoveeTV'
 
 def escapedRepo = updateRepo.toString().replace('\\', '\\\\').replace('"', '\\"')
 
@@ -16,8 +16,8 @@ android {
         applicationId 'fr.ambigovee.tv'
         minSdk 21
         targetSdk 31
-        versionCode 14
-        versionName '1.4.0'
+        versionCode 15
+        versionName '1.5.0'
         buildConfigField 'String', 'UPDATE_REPO', '"' + escapedRepo + '"'
     }
 

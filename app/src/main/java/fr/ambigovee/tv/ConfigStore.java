@@ -21,11 +21,16 @@ final class ConfigStore {
         SharedPreferences.Editor e = p.edit();
         boolean changed = false;
 
-        if (!p.contains("tv_ip") && !BuildDefaults.TV_IP.isEmpty()) { e.putString("tv_ip", BuildDefaults.TV_IP); changed = true; }
-        if (!p.contains("tv_user") && !BuildDefaults.TV_USER.isEmpty()) { e.putString("tv_user", BuildDefaults.TV_USER); changed = true; }
-        if (!p.contains("tv_key") && !BuildDefaults.TV_KEY.isEmpty()) { e.putString("tv_key", BuildDefaults.TV_KEY); changed = true; }
+        // Les valeurs privées d'un build de test ne sont injectées qu'une seule fois.
+        // Ainsi, "Déconnecter la Philips" reste réellement déconnecté ensuite.
+        if (!p.getBoolean("build_defaults_seeded", false)) {
+            if (!p.contains("tv_ip") && !BuildDefaults.TV_IP.isEmpty()) e.putString("tv_ip", BuildDefaults.TV_IP);
+            if (!p.contains("tv_user") && !BuildDefaults.TV_USER.isEmpty()) e.putString("tv_user", BuildDefaults.TV_USER);
+            if (!p.contains("tv_key") && !BuildDefaults.TV_KEY.isEmpty()) e.putString("tv_key", BuildDefaults.TV_KEY);
+            e.putBoolean("build_defaults_seeded", true);
+            changed = true;
+        }
         if (!p.contains("profile")) { e.putString("profile", PROFILE_DIRECT); changed = true; }
-        if (!p.contains("max_brightness")) { e.putInt("max_brightness", 75); changed = true; }
         if (!p.contains("auto_enabled")) { e.putBoolean("auto_enabled", true); changed = true; }
         if (changed) e.apply();
 
@@ -55,8 +60,9 @@ final class ConfigStore {
     static String tvUser(Context c) { return prefs(c).getString("tv_user", BuildDefaults.TV_USER); }
     static String tvKey(Context c) { return prefs(c).getString("tv_key", BuildDefaults.TV_KEY); }
     static String profile(Context c) { return prefs(c).getString("profile", PROFILE_DIRECT); }
-    static int maxBrightness(Context c) { return Math.max(20, Math.min(100, prefs(c).getInt("max_brightness", 75))); }
     static boolean autoEnabled(Context c) { return prefs(c).getBoolean("auto_enabled", true); }
+    static boolean setupCompleted(Context c) { return prefs(c).getBoolean("setup_completed", false); }
+    static void markSetupCompleted(Context c) { prefs(c).edit().putBoolean("setup_completed", true).apply(); }
 
     static void savePhilips(Context c, String ip, String user, String key) {
         prefs(c).edit().putString("tv_ip", n(ip)).putString("tv_user", n(user)).putString("tv_key", n(key)).apply();
@@ -117,8 +123,27 @@ final class ConfigStore {
         if (changed) saveGoveeLights(c, lights);
     }
 
+
+    static int enabledGoveeCount(Context c) {
+        int count = 0;
+        for (GoveeConfig g : goveeLights(c)) if (g.enabled) count++;
+        return count;
+    }
+
+    static void setGoveeEnabled(Context c, String identity, boolean enabled) {
+        List<GoveeConfig> lights = goveeLights(c);
+        for (int i = 0; i < lights.size(); i++) {
+            GoveeConfig g = lights.get(i);
+            if (g.identity().equals(identity)) lights.set(i, g.withEnabled(enabled));
+        }
+        saveGoveeLights(c, lights);
+    }
+
+    static void disconnectPhilips(Context c) {
+        prefs(c).edit().remove("tv_user").remove("tv_key").remove("tv_ip").apply();
+    }
+
     static void setProfile(Context c, String value) { prefs(c).edit().putString("profile", value).apply(); }
-    static void setMaxBrightness(Context c, int value) { prefs(c).edit().putInt("max_brightness", Math.max(20, Math.min(100, value))).apply(); }
     static void setAutoEnabled(Context c, boolean value) { prefs(c).edit().putBoolean("auto_enabled", value).apply(); }
 
     static void clearPairing(Context c) {

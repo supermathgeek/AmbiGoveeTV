@@ -25,7 +25,7 @@ L'option **Contrôle LAN** doit être visible et activée dans Govee Home pour c
 
 Le simple fait qu'un produit Govee existe ne garantit pas qu'il expose les commandes LAN RGB nécessaires. L'assistant scanne et teste les appareils disponibles localement.
 
-AmbiGovee 1.4 accepte plusieurs lampes simultanément. Une lampe peut être associée à :
+AmbiGovee 1.5 accepte plusieurs lampes simultanément. Une lampe peut être associée à :
 
 - **Pièce / plafond** : couleur globale Ambilight ;
 - **Gauche** : LEDs Ambilight du côté gauche ;

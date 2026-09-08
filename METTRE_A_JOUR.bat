@@ -1,6 +1,6 @@
 ﻿@echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-echo Mise a jour AmbiGovee 1.4
+echo Mise a jour AmbiGovee 1.5
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0installer.ps1"
 pause

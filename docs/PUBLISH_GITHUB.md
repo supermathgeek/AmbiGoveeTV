@@ -38,8 +38,8 @@ Pour obtenir `KEYSTORE_BASE64` sous PowerShell :
 Le workflow `.github/workflows/release.yml` se declenche sur un tag de type :
 
 ```bash
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
 Il compile alors `app-release.apk`, signe avec ta cle GitHub Secret et joint l'APK a la GitHub Release.
@@ -61,3 +61,12 @@ Le workflow de build passe automatiquement `${GITHUB_REPOSITORY}` à Gradle via 
 L'APK officielle connaît donc son propre dépôt GitHub sans nom d'utilisateur codé en dur. À chaque lancement, elle consulte la dernière GitHub Release publique. Si un tag plus récent est trouvé et qu'une APK release est jointe, AmbiGovee propose son téléchargement et lance l'installateur Android.
 
 Android peut demander à l'utilisateur d'autoriser AmbiGovee comme source d'installation puis de confirmer la mise à jour. Cette confirmation n'est pas contournée.
+
+## Fichiers de téléchargement directs
+
+Chaque Release officielle publie toujours ces deux noms stables :
+
+- `AmbiGoveeTV-Windows.zip` : installation la plus simple depuis un PC Windows ;
+- `AmbiGoveeTV.apk` : APK directe pour une installation ADB manuelle.
+
+Le README utilise donc les URLs GitHub `releases/latest/download/...`. Le bouton **Télécharger Windows** lance directement le téléchargement du ZIP dès qu'une Release existe.

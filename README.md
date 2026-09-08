@@ -16,7 +16,9 @@ Synchronise les couleurs de ton **Philips Ambilight** avec tes éclairages **Gov
 
 <br>
 
-[📥 Télécharger](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest)
+[📥 Télécharger Windows](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/AmbiGoveeTV-Windows.zip)
+&nbsp;•&nbsp;
+[📦 APK direct](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/AmbiGoveeTV.apk)
 &nbsp;•&nbsp;
 [🐛 Signaler un bug](https://github.com/supermathgeek/AmbiGoveeTV/issues)
 &nbsp;•&nbsp;
@@ -47,10 +49,10 @@ Une fois installé sur la TV, **plus besoin de laisser un PC allumé**.
 | Fonction | Description |
 |---|---|
 | ⚡ **Synchronisation en direct** | Les couleurs Govee suivent l'Ambilight de la TV |
-| 💡 **Plusieurs lampes** | Plusieurs appareils Govee peuvent être utilisés en même temps |
+| 💡 **Plusieurs lampes** | Ajoute, connecte, déconnecte ou supprime chaque Govee indépendamment |
 | 📍 **Positionnement** | Plafond, pièce entière, gauche, haut, droite ou bas |
 | 🎬 **3 modes** | Direct, Cinéma et Doux |
-| 🌗 **Luminosité dynamique** | L'intensité suit l'ambiance de la scène |
+| ✨ **Lumière adaptative** | Le rendu lumineux suit automatiquement l'Ambilight, sans réglage manuel |
 | 🏠 **Réseau local** | La synchronisation principale ne dépend pas du cloud |
 | 💾 **Restauration** | Les lampes retrouvent leur couleur normale quand la TV s'arrête |
 | 🔒 **Respect de l'état des lampes** | AmbiGoveeTV n'allume pas une lampe que tu avais éteinte |
@@ -79,6 +81,20 @@ Exemple :
 - une lampe à gauche → **Gauche**
 - une lampe à droite → **Droite**
 - un bandeau au-dessus → **Haut**
+
+---
+
+
+## 🔌 Connecter / déconnecter un appareil
+
+Dans **Gérer les appareils**, chaque Govee peut être :
+
+- **connecté** à la synchronisation ;
+- **déconnecté** temporairement sans perdre sa position ;
+- déplacé vers une autre zone Ambilight ;
+- supprimé définitivement d’AmbiGoveeTV.
+
+La TV Philips peut également être réassociée ou déconnectée sans supprimer les appareils Govee enregistrés.
 
 ---
 
@@ -168,9 +184,8 @@ Télécharge la dernière version ici :
 
 Puis :
 
-- utilise l'installateur Windows fourni avec la Release  
-ou
-- installe directement l'APK avec ADB
+- **Windows :** clique sur le bouton Télécharger Windows en haut de cette page ;
+- **APK :** utilise APK direct si tu veux installer manuellement avec ADB.
 
 ---
 
@@ -200,8 +215,8 @@ AmbiGoveeTV peut vérifier les nouvelles versions disponibles sur GitHub.
 Quand une nouvelle version est publiée :
 
 ```text
-Version installée : 1.4
-Nouvelle version : 1.5
+Version installée : 1.5
+Nouvelle version : 1.6
 ```
 
 l'application peut proposer la mise à jour.

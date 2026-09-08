@@ -12,6 +12,7 @@ import java.util.List;
 
 final class ColorEngine {
     private static final double TOP_WEIGHT=2.15, SIDE_WEIGHT=1.0, BOTTOM_WEIGHT=0.75, SATURATION_BOOST=1.12;
+    private static final int AUTO_MAX_BRIGHTNESS=80;
 
     static final class Target {
         final double r,g,b,brightness;
@@ -27,7 +28,6 @@ final class ColorEngine {
     }
 
     static Target fromMeasured(Context context, JSONObject payload, String position) throws Exception {
-        int maxBrightness = ConfigStore.maxBrightness(context);
         JSONObject layer=payload.optJSONObject("layer1");
         if(layer==null) return new Target(0,0,0,1);
 
@@ -54,7 +54,7 @@ final class ColorEngine {
         Collections.sort(lum);
         double light=percentile(lum,0.75);
         double n=Math.max(0,Math.min(1,light/255.0));
-        double brightness=1+Math.pow(n,0.76)*(maxBrightness-1);
+        double brightness=1+Math.pow(n,0.76)*(AUTO_MAX_BRIGHTNESS-1);
         return new Target(r,g,b,brightness);
     }
 

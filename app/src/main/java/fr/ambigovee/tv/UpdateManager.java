@@ -22,7 +22,7 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Vérifie GitHub Releases au lancement et propose l'installation de l'APK. */
+/** Verification GitHub Releases au lancement + verification manuelle depuis l'interface TV. */
 final class UpdateManager {
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
@@ -33,16 +33,30 @@ final class UpdateManager {
         }
     }
 
-    static void checkOnLaunch(Activity activity) {
+    static void checkOnLaunch(Activity activity) { check(activity, false); }
+
+    static void checkNow(Activity activity) {
+        Toast.makeText(activity, "Recherche d'une mise a jour…", Toast.LENGTH_SHORT).show();
+        check(activity, true);
+    }
+
+    private static void check(Activity activity, boolean showUpToDate) {
         String repo = BuildConfig.UPDATE_REPO == null ? "" : BuildConfig.UPDATE_REPO.trim();
-        if (repo.isEmpty() || !repo.contains("/")) return;
+        if (repo.isEmpty() || !repo.contains("/")) {
+            if (showUpToDate) Toast.makeText(activity, "Depot de mise a jour non configure.", Toast.LENGTH_LONG).show();
+            return;
+        }
         EXECUTOR.execute(() -> {
             try {
                 Release release = latest(repo);
-                if (release == null || !isNewer(release.tag, BuildConfig.VERSION_NAME)) return;
-                activity.runOnUiThread(() -> showUpdate(activity, release));
-            } catch (Exception ignored) {
-                // Pas de pop-up d'erreur : une panne Internet ne doit jamais gêner AmbiGovee.
+                boolean newer = release != null && isNewer(release.tag, BuildConfig.VERSION_NAME);
+                activity.runOnUiThread(() -> {
+                    if (activity.isFinishing()) return;
+                    if (newer) showUpdate(activity, release);
+                    else if (showUpToDate) Toast.makeText(activity, "AmbiGovee v" + BuildConfig.VERSION_NAME + " est a jour ✓", Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception e) {
+                if (showUpToDate) activity.runOnUiThread(() -> Toast.makeText(activity, "Verification impossible : " + shortMessage(e), Toast.LENGTH_LONG).show());
             }
         });
     }
@@ -50,7 +64,7 @@ final class UpdateManager {
     private static Release latest(String repo) throws Exception {
         URL url = new URL("https://api.github.com/repos/" + repo + "/releases/latest");
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
-        c.setConnectTimeout(2500); c.setReadTimeout(3000);
+        c.setConnectTimeout(2500); c.setReadTimeout(3500);
         c.setRequestProperty("Accept", "application/vnd.github+json");
         c.setRequestProperty("User-Agent", "AmbiGovee-TV/" + BuildConfig.VERSION_NAME);
         int code = c.getResponseCode();
@@ -77,14 +91,11 @@ final class UpdateManager {
         if (activity.isFinishing()) return;
         String label = r.name == null || r.name.trim().isEmpty() ? r.tag : r.name;
         AlertDialog.Builder b = new AlertDialog.Builder(activity)
-                .setTitle("Mise à jour AmbiGovee")
-                .setMessage("Une nouvelle version est disponible : " + label + "\n\nLa configuration Philips et tes lampes seront conservées.")
+                .setTitle("Mise a jour AmbiGovee")
+                .setMessage("Une nouvelle version est disponible : " + label + "\n\nTes appareils et l'association Philips seront conserves.")
                 .setNegativeButton("PLUS TARD", null);
-        if (!r.apkUrl.isEmpty()) {
-            b.setPositiveButton("METTRE À JOUR", (d,w) -> beginInstall(activity,r));
-        } else if (!r.pageUrl.isEmpty()) {
-            b.setPositiveButton("VOIR LA RELEASE", (d,w) -> activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(r.pageUrl))));
-        }
+        if (!r.apkUrl.isEmpty()) b.setPositiveButton("METTRE A JOUR", (d,w) -> beginInstall(activity,r));
+        else if (!r.pageUrl.isEmpty()) b.setPositiveButton("VOIR LA RELEASE", (d,w) -> activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(r.pageUrl))));
         b.show();
     }
 
@@ -93,14 +104,14 @@ final class UpdateManager {
             try {
                 Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()));
                 activity.startActivity(settings);
-                Toast.makeText(activity,"Autorise AmbiGovee à installer ses mises à jour, puis relance METTRE À JOUR.",Toast.LENGTH_LONG).show();
+                Toast.makeText(activity,"Autorise AmbiGovee a installer ses mises a jour, puis relance la mise a jour.",Toast.LENGTH_LONG).show();
             } catch (Exception e) {
-                Toast.makeText(activity,"Autorise les sources inconnues pour AmbiGovee dans les paramètres Android.",Toast.LENGTH_LONG).show();
+                Toast.makeText(activity,"Autorise les sources inconnues pour AmbiGovee dans les parametres Android.",Toast.LENGTH_LONG).show();
             }
             return;
         }
 
-        Toast.makeText(activity,"Téléchargement de la mise à jour…",Toast.LENGTH_SHORT).show();
+        Toast.makeText(activity,"Telechargement de la mise a jour…",Toast.LENGTH_SHORT).show();
         EXECUTOR.execute(() -> {
             try {
                 File dir = new File(activity.getCacheDir(), "updates");
@@ -109,7 +120,7 @@ final class UpdateManager {
                 download(r.apkUrl, apk);
                 installApk(activity, apk);
             } catch (Exception e) {
-                activity.runOnUiThread(() -> Toast.makeText(activity,"Mise à jour impossible : " + shortMessage(e),Toast.LENGTH_LONG).show());
+                activity.runOnUiThread(() -> Toast.makeText(activity,"Mise a jour impossible : " + shortMessage(e),Toast.LENGTH_LONG).show());
             }
         });
     }
@@ -139,7 +150,6 @@ final class UpdateManager {
         c.setInstanceFollowRedirects(true);c.setConnectTimeout(4000);c.setReadTimeout(15000);
         c.setRequestProperty("User-Agent","AmbiGovee-TV/"+BuildConfig.VERSION_NAME);
         int status=c.getResponseCode();
-        // GitHub/CDN redirects can occasionally need a manual follow.
         if(status>=300&&status<400){String loc=c.getHeaderField("Location");c.disconnect();if(loc==null)throw new IllegalStateException("Redirection GitHub invalide");download(loc,file);return;}
         if(status<200||status>=300)throw new IllegalStateException("HTTP "+status);
         try(InputStream in=new BufferedInputStream(c.getInputStream());FileOutputStream out=new FileOutputStream(file)){
