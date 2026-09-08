@@ -44,7 +44,7 @@ $gd=Join-Path $Tools "gradle-8.9";$gradle=Join-Path $gd "bin\gradle.bat";if(!(Te
 
 Step "Compilation AmbiGovee 1.5"
 &$gradle -p $Root :app:assembleDebug --no-daemon;if($LASTEXITCODE-ne 0){throw "Compilation Android : echec"}
-$apk=Join-Path $Root "app\build\outputs\apk\debug\app-debug.apk";Copy-Item $apk (Join-Path $Root "AmbiGovee-1.5.apk") -Force
+$apk=Join-Path $Root "app\build\outputs\apk\debug\app-debug.apk";Copy-Item $apk (Join-Path $Root "AmbiGovee-1.6.apk") -Force
 
 $adb=Join-Path $Sdk "platform-tools\adb.exe";&$adb start-server|Out-Null
 $defaultIp="";if($defaultIp){$prompt="IP de la TV Philips [$defaultIp]"}else{$prompt="IP de la TV Philips (Parametres > Reseau)"}

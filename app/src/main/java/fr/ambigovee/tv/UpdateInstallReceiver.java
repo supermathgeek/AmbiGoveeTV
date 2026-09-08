@@ -19,6 +19,7 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
                 context.startActivity(confirm);
             }
         } else if (status == PackageInstaller.STATUS_SUCCESS) {
+            UpdateManager.markInstallFinished(context, true);
             Toast.makeText(context, "AmbiGovee mis à jour ✓", Toast.LENGTH_LONG).show();
         } else {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);

@@ -1,42 +1,34 @@
 # Changelog
 
+## 1.6.1
+
+- Regroupe toutes les améliorations de la 1.5 avec la mise à jour automatique GitHub.
+- Gestion complète des appareils Govee : ajouter, connecter, déconnecter, repositionner ou supprimer.
+- Plusieurs appareils Govee peuvent être synchronisés en même temps.
+- Position par appareil : pièce/plafond, gauche, haut, droite ou bas.
+- Suppression du réglage manuel de luminosité de l'interface.
+- Interface TV simplifiée et navigation D-pad.
+- Réassociation ou déconnexion de la TV Philips sans perdre les appareils Govee.
+- Vérification automatique de GitHub Releases à chaque lancement.
+- Si une version plus récente est disponible, téléchargement automatique de `AmbiGoveeTV.apk`.
+- Vérification du package et du `versionCode` avant installation.
+- Demande de l'autorisation Android « installer des applications inconnues » uniquement si nécessaire.
+- Reprise de l'installation après retour des paramètres Android.
+- Les appareils et l'association Philips sont conservés si les APK utilisent la même signature Android.
+- Bouton de vérification manuelle des mises à jour conservé.
+- Assets de Release stables : `AmbiGoveeTV.apk` et `AmbiGoveeTV-Windows.zip`.
+
 ## 1.5.0
 
-- Nouvelle interface TV plus simple et plus propre.
-- Suppression du réglage manuel de luminosité : elle suit automatiquement l’Ambilight.
-- Connexion / déconnexion individuelle des appareils Govee sans les supprimer.
-- Suppression définitive séparée d’un appareil.
-- Déconnexion / réassociation de la TV Philips sans perdre les lampes Govee.
-- Bouton de vérification manuelle des mises à jour.
-- Vérification GitHub automatique à chaque lancement pour les builds officiels.
-- Assets GitHub stables `AmbiGoveeTV.apk` et `AmbiGoveeTV-Windows.zip` pour un téléchargement direct.
-- Navigation D-pad simplifiée sur l’écran principal.
-
-## 1.5.0
-
-- support de plusieurs appareils Govee LAN en même temps ;
-- ajout/suppression de lampes depuis l'assistant ;
-- position par lampe : pièce/plafond, gauche, droite, au-dessus ou sous la TV ;
-- chaque lampe reçoit la zone Ambilight correspondant à sa position ;
-- migration automatique de l'ancienne configuration mono-lampe ;
-- restauration indépendante de la couleur/luminosité normale de chaque lampe ;
-- scan Govee multi-appareils ;
-- test de compatibilité de toutes les lampes configurées ;
-- vérification automatique des GitHub Releases à chaque lancement des builds officiels ;
-- téléchargement d'une nouvelle APK depuis l'app puis passage par l'installateur Android ;
-- l'installation d'une mise à jour reste soumise aux autorisations/confirmations Android ;
-- compteur de lampes actives/synchronisées sur le dashboard.
+- Nouvelle interface TV.
+- Connexion / déconnexion individuelle des appareils Govee.
+- Gestion multi-lampes et positions.
+- Suppression du réglage manuel de luminosité.
+- Vérification GitHub manuelle et automatique préparée.
 
 ## 1.3.0
 
-- nouvelle interface TV ;
-- navigation D-pad explicite ;
-- focus visible et animation TV ;
-- suppression du slider au profit de boutons +/- adaptés à la télécommande ;
-- assistant d'installation en 4 étapes ;
-- association Philips par PIN dans l'app ;
-- scan Govee LAN depuis l'app ;
-- fallback de scan local si le multicast est bloqué ;
-- test de compatibilité Philips/Govee ;
-- aperçu de la couleur Ambilight en direct sur le dashboard ;
-- structure préparée pour GitHub Actions et releases signées.
+- Navigation D-pad explicite.
+- Association Philips par PIN.
+- Scan Govee LAN.
+- Interface Android TV dédiée.

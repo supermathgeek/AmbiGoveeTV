@@ -210,13 +210,17 @@ L'objectif est que l'utilisateur **n'ait pas à récupérer manuellement une cl�
 
 ## 🔄 Mises à jour
 
+**Important :** AmbiGoveeTV se met à jour depuis les **GitHub Releases**, pas depuis un simple commit. Une nouvelle version doit être publiée avec un `versionCode` supérieur et un asset nommé exactement `AmbiGoveeTV.apk`.
+
+Une modification du code seule ne déclenche pas de mise à jour sur la TV.
+
 AmbiGoveeTV peut vérifier les nouvelles versions disponibles sur GitHub.
 
 Quand une nouvelle version est publiée :
 
 ```text
-Version installée : 1.5
-Nouvelle version : 1.6
+Version installée : 1.6.0
+Nouvelle version : 1.6.1
 ```
 
 l'application peut proposer la mise à jour.
@@ -335,3 +339,20 @@ Les éventuelles mentions de projets ou travaux tiers sont regroupées dans [`NO
 **Ton Ambilight. Toute ta pièce.**
 
 </div>
+
+
+## 🔄 Mise à jour automatique sur la TV
+
+AmbiGoveeTV est relié aux **GitHub Releases** de ce dépôt. À chaque lancement, l'application vérifie la dernière version publiée.
+
+Si une nouvelle version contient l'asset **`AmbiGoveeTV.apk`**, l'application la télécharge directement sur la TV puis lance l'installateur Android. La première fois, Android peut demander d'autoriser AmbiGoveeTV à installer des applications provenant de cette source.
+
+> Android TV / Google TV peut toujours demander une confirmation avant l'installation. Une application Android normale ne peut pas contourner cette protection.
+
+Pour qu'une mise à jour remplace correctement l'ancienne version :
+
+- augmente `versionCode` ;
+- augmente `versionName` ;
+- publie une nouvelle **GitHub Release** ;
+- joins un fichier nommé exactement `AmbiGoveeTV.apk` ;
+- signe toutes les versions avec **la même clé Android**.

@@ -33,6 +33,11 @@ public class MainActivity extends Activity {
     private TvButton autoButton, baseButton, directButton, cinemaButton, douxButton, devicesButton, updateButton;
     private BroadcastReceiver statusReceiver;
 
+    @Override protected void onResume() {
+        super.onResume();
+        UpdateManager.onActivityResumed(this);
+    }
+
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ConfigStore.seedDefaults(this);
