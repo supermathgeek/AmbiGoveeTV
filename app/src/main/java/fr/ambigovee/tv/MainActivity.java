@@ -16,7 +16,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Écran principal simple et lisible à la télécommande.
+ * Tableau de bord Android TV.
+ *
+ * L'interface est volontairement "10-foot UI" :
+ * - peu de texte ;
+ * - gros éléments ;
+ * - focus très visible ;
+ * - aucune action essentielle cachée ;
+ * - navigation D-pad déterministe.
  */
 public class MainActivity extends Activity {
 
@@ -70,138 +77,222 @@ public class MainActivity extends Activity {
     private View buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(50), dp(24), dp(50), dp(24));
+        root.setPadding(dp(44), dp(26), dp(44), dp(28));
         root.setBackground(pageBackground());
 
+        root.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(74)));
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.HORIZONTAL);
+        body.setGravity(Gravity.TOP);
+
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        bodyParams.setMargins(0, dp(12), 0, 0);
+        root.addView(body, bodyParams);
+
+        LinearLayout left = buildStatusPanel();
+        LinearLayout.LayoutParams leftParams = new LinearLayout.LayoutParams(dp(350), -1);
+        leftParams.setMargins(0, 0, dp(18), 0);
+        body.addView(left, leftParams);
+
+        LinearLayout controls = buildControls();
+        body.addView(controls, new LinearLayout.LayoutParams(0, -1, 1));
+
+        wireFocus();
+        refreshProfileButtons();
+
+        return root;
+    }
+
+    private View buildHeader() {
         LinearLayout header = row(Gravity.CENTER_VERTICAL);
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-        brand.addView(text("AmbiGovee", 36, Color.WHITE, true));
-        brand.addView(text("Ambilight + Govee, simplement.", 15, 0xff9099ad, false));
-        header.addView(brand, new LinearLayout.LayoutParams(0, dp(66), 1));
 
-        TextView version = text("v" + BuildConfig.VERSION_NAME, 14, 0xff7e879b, true);
+        TextView app = text("AmbiGovee", 36, 0xfff5f7fb, true);
+        TextView sub = text("AMBILIGHT  ×  GOVEE", 12, 0xff8c96a8, true);
+        sub.setLetterSpacing(0.12f);
+
+        brand.addView(app);
+        brand.addView(sub);
+
+        header.addView(brand, new LinearLayout.LayoutParams(0, dp(70), 1));
+
+        TextView version = text("v" + BuildConfig.VERSION_NAME, 13, 0xff6f7a8d, true);
         version.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        header.addView(version, new LinearLayout.LayoutParams(dp(120), dp(66)));
-        root.addView(header);
+        header.addView(version, new LinearLayout.LayoutParams(dp(120), dp(70)));
 
-        LinearLayout deviceRow = row(Gravity.CENTER_VERTICAL);
-        tvChip = chip("○  PHILIPS");
-        goveeChip = chip("○  GOVEE");
+        return header;
+    }
 
-        LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(0, dp(46), 1);
-        chipParams.setMargins(dp(5), dp(8), dp(5), 0);
-        deviceRow.addView(tvChip, chipParams);
-        deviceRow.addView(goveeChip, chipParams);
-        root.addView(deviceRow);
+    private LinearLayout buildStatusPanel() {
+        LinearLayout panel = card(26);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(24), dp(24), dp(24), dp(22));
 
-        LinearLayout hero = card();
+        TextView section = text("ÉTAT", 12, 0xff8d7fff, true);
+        section.setLetterSpacing(0.12f);
+        panel.addView(section);
+
+        LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.HORIZONTAL);
         hero.setGravity(Gravity.CENTER_VERTICAL);
-        hero.setPadding(dp(24), dp(18), dp(24), dp(18));
 
-        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, dp(128));
-        heroParams.setMargins(0, dp(14), 0, 0);
-        root.addView(hero, heroParams);
+        LinearLayout.LayoutParams heroParams = new LinearLayout.LayoutParams(-1, dp(132));
+        heroParams.setMargins(0, dp(10), 0, 0);
+        panel.addView(hero, heroParams);
 
         colorPreview = new View(this);
-        colorPreview.setBackground(roundColor(0xff30284a, 24));
-        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dp(78), dp(78));
-        previewParams.setMargins(0, 0, dp(22), 0);
-        hero.addView(colorPreview, previewParams);
+        colorPreview.setBackground(roundColor(0xff332b4b, 28));
+        LinearLayout.LayoutParams colorParams = new LinearLayout.LayoutParams(dp(104), dp(104));
+        colorParams.setMargins(0, 0, dp(18), 0);
+        hero.addView(colorPreview, colorParams);
 
         LinearLayout heroText = new LinearLayout(this);
         heroText.setOrientation(LinearLayout.VERTICAL);
+        heroText.setGravity(Gravity.CENTER_VERTICAL);
 
-        status = text("Démarrage…", 27, Color.WHITE, true);
-        colorLabel = text("En attente de l'Ambilight", 14, 0xff929caf, false);
+        status = text("Démarrage…", 24, 0xfff5f7fb, true);
+        status.setMaxLines(2);
         heroText.addView(status);
 
-        LinearLayout.LayoutParams colorParams = new LinearLayout.LayoutParams(-1, -2);
-        colorParams.setMargins(0, dp(6), 0, 0);
-        heroText.addView(colorLabel, colorParams);
+        colorLabel = text("En attente de l'Ambilight", 13, 0xff8c96a8, false);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+        cp.setMargins(0, dp(6), 0, 0);
+        heroText.addView(colorLabel, cp);
 
-        hero.addView(heroText, new LinearLayout.LayoutParams(0, -2, 1));
+        profileLabel = pill(profileName(ConfigStore.profile(this)), 0xffd4caff, 0xff251d42);
+        LinearLayout.LayoutParams profileParams = new LinearLayout.LayoutParams(-2, dp(34));
+        profileParams.setMargins(0, dp(10), 0, 0);
+        heroText.addView(profileLabel, profileParams);
 
-        profileLabel = text(profileName(ConfigStore.profile(this)), 14, 0xffcbbfff, true);
-        profileLabel.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        hero.addView(profileLabel, new LinearLayout.LayoutParams(dp(210), dp(54)));
+        hero.addView(heroText, new LinearLayout.LayoutParams(0, -1, 1));
 
-        LinearLayout syncActions = row(Gravity.CENTER);
+        TextView devicesTitle = text("APPAREILS", 11, 0xff717c8f, true);
+        devicesTitle.setLetterSpacing(0.10f);
+        LinearLayout.LayoutParams dtp = new LinearLayout.LayoutParams(-1, -2);
+        dtp.setMargins(0, dp(18), 0, dp(8));
+        panel.addView(devicesTitle, dtp);
 
-        autoButton = tvButton("▶  ACTIVER LA SYNCHRO", 0xff35255f, 0xff7655ff, ID_AUTO);
-        baseButton = tvButton("■  LUMIÈRE NORMALE", 0xff171d2a, 0xff46526b, ID_BASE);
+        tvChip = statusRow("○", "PHILIPS", "Connexion…");
+        goveeChip = statusRow("○", "GOVEE", "Connexion…");
+
+        LinearLayout.LayoutParams srp = new LinearLayout.LayoutParams(-1, dp(58));
+        srp.setMargins(0, dp(6), 0, 0);
+        panel.addView(tvChip, srp);
+
+        LinearLayout.LayoutParams srp2 = new LinearLayout.LayoutParams(-1, dp(58));
+        srp2.setMargins(0, dp(7), 0, 0);
+        panel.addView(goveeChip, srp2);
+
+        TextView privacy = text(
+                "Local • aucune caméra • aucune commande d'allumage forcée",
+                11,
+                0xff626d80,
+                false
+        );
+        privacy.setGravity(Gravity.LEFT | Gravity.BOTTOM);
+        privacy.setMaxLines(2);
+
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(-1, 0, 1);
+        pp.setMargins(0, dp(18), 0, 0);
+        panel.addView(privacy, pp);
+
+        return panel;
+    }
+
+    private LinearLayout buildControls() {
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.VERTICAL);
+
+        TextView controlTitle = text("CONTRÔLE", 12, 0xff8d7fff, true);
+        controlTitle.setLetterSpacing(0.12f);
+        controls.addView(controlTitle);
+
+        LinearLayout actions = row(Gravity.CENTER_VERTICAL);
+
+        autoButton = tvButton("▶  ACTIVER LA SYNCHRO", 0xff2d2252, 0xff7357ff, ID_AUTO);
+        baseButton = tvButton("■  LUMIÈRE NORMALE", 0xff151b27, 0xff3c4960, ID_BASE);
 
         autoButton.setOnClickListener(v -> startAmbiService(AmbiService.ACTION_AUTO));
         baseButton.setOnClickListener(v -> startAmbiService(AmbiService.ACTION_BASE));
 
-        LinearLayout.LayoutParams syncParams = new LinearLayout.LayoutParams(0, dp(66), 1);
-        syncParams.setMargins(dp(6), dp(14), dp(6), 0);
-        syncActions.addView(autoButton, syncParams);
-        syncActions.addView(baseButton, syncParams);
-        root.addView(syncActions);
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(82), 1);
+        actionParams.setMargins(dp(5), dp(10), dp(5), 0);
+        actions.addView(autoButton, actionParams);
+        actions.addView(baseButton, actionParams);
+        controls.addView(actions);
 
-        LinearLayout modeCard = card();
-        modeCard.setOrientation(LinearLayout.HORIZONTAL);
-        modeCard.setGravity(Gravity.CENTER_VERTICAL);
-        modeCard.setPadding(dp(18), dp(8), dp(18), dp(8));
+        LinearLayout modePanel = card(22);
+        modePanel.setOrientation(LinearLayout.VERTICAL);
+        modePanel.setPadding(dp(18), dp(15), dp(18), dp(16));
 
-        LinearLayout.LayoutParams modeCardParams = new LinearLayout.LayoutParams(-1, dp(76));
-        modeCardParams.setMargins(0, dp(14), 0, 0);
-        root.addView(modeCard, modeCardParams);
+        LinearLayout.LayoutParams modePanelParams = new LinearLayout.LayoutParams(-1, dp(144));
+        modePanelParams.setMargins(dp(5), dp(14), dp(5), 0);
+        controls.addView(modePanel, modePanelParams);
 
-        TextView modeTitle = text("MODE", 13, 0xff7d879b, true);
-        modeTitle.setGravity(Gravity.CENTER_VERTICAL);
-        modeCard.addView(modeTitle, new LinearLayout.LayoutParams(dp(90), dp(56)));
+        LinearLayout modeHeader = row(Gravity.CENTER_VERTICAL);
+        modeHeader.addView(text("Ambiance", 18, 0xfff5f7fb, true), new LinearLayout.LayoutParams(0, dp(32), 1));
 
-        directButton = tvButton("DIRECT", 0xff171d2a, 0xff7655ff, ID_DIRECT);
-        cinemaButton = tvButton("CINÉMA", 0xff171d2a, 0xff7655ff, ID_CINEMA);
-        douxButton = tvButton("DOUX", 0xff171d2a, 0xff7655ff, ID_DOUX);
+        TextView hint = text("Choisis le niveau de réactivité", 12, 0xff7d879a, false);
+        hint.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        modeHeader.addView(hint, new LinearLayout.LayoutParams(dp(310), dp(32)));
+        modePanel.addView(modeHeader);
+
+        LinearLayout modeRow = row(Gravity.CENTER_VERTICAL);
+
+        directButton = tvButton("DIRECT", 0xff151b27, 0xff7357ff, ID_DIRECT);
+        cinemaButton = tvButton("CINÉMA", 0xff151b27, 0xff7357ff, ID_CINEMA);
+        douxButton = tvButton("DOUX", 0xff151b27, 0xff7357ff, ID_DOUX);
 
         directButton.setOnClickListener(v -> setProfile(ConfigStore.PROFILE_DIRECT));
         cinemaButton.setOnClickListener(v -> setProfile(ConfigStore.PROFILE_CINEMA));
         douxButton.setOnClickListener(v -> setProfile(ConfigStore.PROFILE_DOUX));
 
-        LinearLayout.LayoutParams profileParams = new LinearLayout.LayoutParams(0, dp(56), 1);
-        profileParams.setMargins(dp(5), 0, dp(5), 0);
-        modeCard.addView(directButton, profileParams);
-        modeCard.addView(cinemaButton, profileParams);
-        modeCard.addView(douxButton, profileParams);
+        LinearLayout.LayoutParams modeParams = new LinearLayout.LayoutParams(0, dp(68), 1);
+        modeParams.setMargins(dp(4), dp(10), dp(4), 0);
+        modeRow.addView(directButton, modeParams);
+        modeRow.addView(cinemaButton, modeParams);
+        modeRow.addView(douxButton, modeParams);
+        modePanel.addView(modeRow);
 
-        LinearLayout bottom = row(Gravity.CENTER);
+        TextView toolsTitle = text("RÉGLAGES", 12, 0xff8d7fff, true);
+        toolsTitle.setLetterSpacing(0.12f);
+        LinearLayout.LayoutParams toolTitleParams = new LinearLayout.LayoutParams(-1, -2);
+        toolTitleParams.setMargins(0, dp(18), 0, 0);
+        controls.addView(toolsTitle, toolTitleParams);
 
-        devicesButton = tvButton("⚙  MES APPAREILS", 0xff171d2a, 0xff46526b, ID_DEVICES);
-        updateButton = tvButton("↻  MISE À JOUR", 0xff171d2a, 0xff46526b, ID_UPDATE);
+        LinearLayout utilityRow = row(Gravity.CENTER_VERTICAL);
+
+        devicesButton = tvButton("⚙  APPAREILS", 0xff151b27, 0xff3c4960, ID_DEVICES);
+        updateButton = tvButton("↻  MISE À JOUR", 0xff151b27, 0xff3c4960, ID_UPDATE);
 
         devicesButton.setOnClickListener(v -> startActivity(
                 new Intent(this, SetupActivity.class)
                         .putExtra("edit", true)
                         .putExtra("start_step", 1)
         ));
-
         updateButton.setOnClickListener(v -> UpdateManager.checkNow(this));
 
-        LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(0, dp(60), 1);
-        bottomParams.setMargins(dp(6), dp(14), dp(6), 0);
-        bottom.addView(devicesButton, bottomParams);
-        bottom.addView(updateButton, bottomParams);
-        root.addView(bottom);
+        LinearLayout.LayoutParams utilityParams = new LinearLayout.LayoutParams(0, dp(68), 1);
+        utilityParams.setMargins(dp(5), dp(10), dp(5), 0);
+        utilityRow.addView(devicesButton, utilityParams);
+        utilityRow.addView(updateButton, utilityParams);
+        controls.addView(utilityRow);
 
-        TextView note = text(
-                "AmbiGovee ne rallume jamais une lumière que tu as éteinte.",
-                13,
-                0xff768095,
+        TextView footer = text(
+                "AmbiGovee respecte toujours l'état réel de tes lumières.",
+                12,
+                0xff687386,
                 false
         );
-        note.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1, dp(34));
-        noteParams.setMargins(0, dp(7), 0, 0);
-        root.addView(note, noteParams);
+        footer.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, 0, 1);
+        fp.setMargins(0, dp(16), 0, 0);
+        controls.addView(footer, fp);
 
-        wireFocus();
-        refreshProfileButtons();
-        return root;
+        return controls;
     }
 
     private void wireFocus() {
@@ -245,6 +336,8 @@ public class MainActivity extends Activity {
         directButton.setSelectedStyle(ConfigStore.PROFILE_DIRECT.equals(profile));
         cinemaButton.setSelectedStyle(ConfigStore.PROFILE_CINEMA.equals(profile));
         douxButton.setSelectedStyle(ConfigStore.PROFILE_DOUX.equals(profile));
+
+        if (profileLabel != null) profileLabel.setText(profileName(profile));
     }
 
     private LinearLayout row(int gravity) {
@@ -254,9 +347,9 @@ public class MainActivity extends Activity {
         return view;
     }
 
-    private LinearLayout card() {
+    private LinearLayout card(int radius) {
         LinearLayout view = new LinearLayout(this);
-        view.setBackground(roundGradient(0xff141a26, 0xff10141f, 20, 0xff293144));
+        view.setBackground(roundGradient(0xff121722, 0xff0e131d, radius, 0xff252d3d));
         return view;
     }
 
@@ -268,10 +361,23 @@ public class MainActivity extends Activity {
         return button;
     }
 
-    private TextView chip(String label) {
-        TextView view = text(label, 13, 0xff9ca6b9, true);
+    private TextView statusRow(String icon, String title, String detail) {
+        TextView view = text(icon + "  " + title + "   •   " + detail, 13, 0xffa1aabc, true);
+        view.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(16), 0, dp(14), 0);
+        view.setBackground(roundGradient(0xff111722, 0xff0d121b, 14, 0xff252d3d));
+        return view;
+    }
+
+    private TextView pill(String label, int foreground, int background) {
+        TextView view = text(label, 12, foreground, true);
         view.setGravity(Gravity.CENTER);
-        view.setBackground(roundGradient(0xff141a26, 0xff10141f, 15, 0xff293144));
+        view.setPadding(dp(12), 0, dp(12), 0);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(background);
+        bg.setCornerRadius(dp(17));
+        bg.setStroke(dp(1), 0xff493c70);
+        view.setBackground(bg);
         return view;
     }
 
@@ -280,6 +386,7 @@ public class MainActivity extends Activity {
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
+        view.setIncludeFontPadding(false);
         if (bold) view.setTypeface(Typeface.DEFAULT_BOLD);
         return view;
     }
@@ -287,17 +394,17 @@ public class MainActivity extends Activity {
     private GradientDrawable pageBackground() {
         return new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xff06080d, 0xff0b0f18, 0xff160d24}
+                new int[]{0xff06080d, 0xff090d15, 0xff151020}
         );
     }
 
-    private GradientDrawable roundGradient(int colorA, int colorB, int radius, int strokeColor) {
+    private GradientDrawable roundGradient(int a, int b, int radius, int stroke) {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{colorA, colorB}
+                new int[]{a, b}
         );
         drawable.setCornerRadius(dp(radius));
-        drawable.setStroke(dp(1), strokeColor);
+        drawable.setStroke(dp(1), stroke);
         return drawable;
     }
 
@@ -305,7 +412,7 @@ public class MainActivity extends Activity {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(dp(radius));
-        drawable.setStroke(dp(2), 0xff4a425e);
+        drawable.setStroke(dp(2), 0xff51436f);
         return drawable;
     }
 
@@ -338,11 +445,13 @@ public class MainActivity extends Activity {
                         && !ConfigStore.tvKey(MainActivity.this).isEmpty();
 
                 if (!philipsPaired) {
-                    tvChip.setText("○  PHILIPS  DÉCONNECTÉE");
-                    tvChip.setTextColor(0xff9099ad);
+                    tvChip.setText("○  PHILIPS   •   DÉCONNECTÉE");
+                    tvChip.setTextColor(0xff8c96a8);
                 } else {
-                    tvChip.setText(tvActive ? "●  PHILIPS  ACTIVE" : "●  PHILIPS  VEILLE");
-                    tvChip.setTextColor(tvActive ? 0xff76e2ad : 0xff9099ad);
+                    tvChip.setText(tvActive
+                            ? "●  PHILIPS   •   ACTIVE"
+                            : "●  PHILIPS   •   EN VEILLE");
+                    tvChip.setTextColor(tvActive ? 0xff6fe3a6 : 0xff8c96a8);
                 }
 
                 int activeConfigured = ConfigStore.enabledGoveeCount(MainActivity.this);
@@ -351,20 +460,22 @@ public class MainActivity extends Activity {
                 int lightsSync = intent.getIntExtra(AmbiService.EXTRA_LIGHTS_SYNC, 0);
 
                 if (lightsSync > 0) {
-                    goveeChip.setText("●  GOVEE  " + lightsSync + "/" + activeConfigured + " EN SYNC");
+                    goveeChip.setText("●  GOVEE   •   " + lightsSync + "/" + activeConfigured + " EN SYNC");
                 } else if (lightsOn > 0) {
-                    goveeChip.setText("●  GOVEE  " + lightsOn + "/" + activeConfigured + " ALLUMÉ" + (lightsOn > 1 ? "S" : ""));
+                    goveeChip.setText("●  GOVEE   •   " + lightsOn + "/" + activeConfigured + " ALLUMÉ"
+                            + (lightsOn > 1 ? "S" : ""));
                 } else if (activeConfigured == 0 && savedConfigured > 0) {
-                    goveeChip.setText("○  GOVEE  EN PAUSE");
+                    goveeChip.setText("○  GOVEE   •   EN PAUSE");
                 } else {
-                    goveeChip.setText("○  GOVEE  " + activeConfigured + " PRÊT" + (activeConfigured > 1 ? "S" : ""));
+                    goveeChip.setText("○  GOVEE   •   " + activeConfigured + " PRÊT"
+                            + (activeConfigured > 1 ? "S" : ""));
                 }
 
                 goveeChip.setTextColor(
-                        lightsSync > 0 ? 0xff76e2ad : (goveeReachable ? 0xffffc36b : 0xff9099ad)
+                        lightsSync > 0 ? 0xff6fe3a6 : (goveeReachable ? 0xfff4c56a : 0xff8c96a8)
                 );
 
-                status.setTextColor(syncing ? 0xffd0c5ff : Color.WHITE);
+                status.setTextColor(syncing ? 0xffd7d0ff : 0xfff5f7fb);
                 autoButton.setSelectedStyle(syncing);
                 baseButton.setSelectedStyle(!syncing);
 
@@ -373,10 +484,8 @@ public class MainActivity extends Activity {
                 int blue = intent.getIntExtra(AmbiService.EXTRA_B, -1);
 
                 if (red >= 0 && green >= 0 && blue >= 0) {
-                    colorPreview.setBackground(roundColor(Color.rgb(red, green, blue), 24));
-                    colorLabel.setText(syncing
-                            ? "Couleur Ambilight en direct"
-                            : "Dernière couleur Ambilight");
+                    colorPreview.setBackground(roundColor(Color.rgb(red, green, blue), 28));
+                    colorLabel.setText(syncing ? "Couleur Ambilight en direct" : "Dernière couleur Ambilight");
                 }
             }
         };
