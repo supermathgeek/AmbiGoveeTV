@@ -2,31 +2,51 @@ name: Android build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK 34
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: "8.9"
 
-      - name: Build APK
-        run: gradle :app:assembleDebug -PAMBIGOVEE_REPO="${GITHUB_REPOSITORY}"
+      - name: Build debug APK
+        shell: bash
+        run: |
+          gradle --version
+          gradle :app:assembleDebug             -PAMBIGOVEE_REPO="${GITHUB_REPOSITORY}"             --stacktrace
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
         with:
-          name: AmbiGovee-debug
+          name: AmbiGoveeTV-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
