@@ -8,11 +8,9 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
-import android.view.WindowManager;
-import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -24,10 +22,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Assistant de configuration simplifié pour Android TV.
+ * Assistant de première installation AmbiGovee.
  *
- * 3 étapes seulement : Philips -> Govee -> Terminé.
- * La vérification de mise à jour fonctionne aussi depuis cet écran.
+ * Objectif : 3 étapes, aucun identifiant technique à copier et aucun PC.
+ * Le téléphone n'est utilisé qu'une seule fois pour saisir le PIN Philips sans fermer
+ * la fenêtre d'authentification affichée sur la TV.
  */
 public class SetupActivity extends Activity {
 
@@ -40,7 +39,8 @@ public class SetupActivity extends Activity {
     private TvButton primary;
     private TvButton back;
     private TvButton next;
-    private PhilipsPairer.Pending pending;
+
+    private PairingBridgeServer pairingBridge;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,8 +55,7 @@ public class SetupActivity extends Activity {
                 getIntent().getIntExtra("start_step", 0)));
         showStep(initialStep);
 
-        // Important : même si l'utilisateur n'a pas encore fini la configuration,
-        // AmbiGovee peut maintenant recevoir les futures mises à jour.
+        // Les mises à jour restent disponibles même pendant la première configuration.
         UpdateManager.checkOnLaunch(this);
     }
 
@@ -64,6 +63,12 @@ public class SetupActivity extends Activity {
     protected void onResume() {
         super.onResume();
         UpdateManager.onActivityResumed(this);
+
+        // Après validation du PIN depuis le téléphone, la fenêtre Philips disparaît
+        // et cette Activity reprend le focus : on rafraîchit immédiatement l'étape.
+        if (step == 0 && pairingBridge != null && isPhilipsPaired()) {
+            showStep(0);
+        }
     }
 
     private void buildShell() {
@@ -133,6 +138,10 @@ public class SetupActivity extends Activity {
     }
 
     private void showStep(int newStep) {
+        if (newStep != 0) {
+            stopPairingBridge();
+        }
+
         step = newStep;
         content.removeAllViews();
         stepLabel.setText((step + 1) + " / 3");
@@ -148,161 +157,199 @@ public class SetupActivity extends Activity {
     }
 
     private void showPhilips() {
-        boolean paired = !ConfigStore.tvUser(this).isEmpty()
-                && !ConfigStore.tvKey(this).isEmpty();
+        boolean paired = isPhilipsPaired();
 
-        content.addView(kicker("1  •  PHILIPS AMBILIGHT"));
-        content.addView(title(paired ? "TV Philips connectée ✓" : "Connecte ta TV Philips"));
-        content.addView(body(
-                paired
-                        ? "AmbiGovee est déjà autorisé à lire les couleurs Ambilight."
-                        : "Appuie sur le bouton ci-dessous. La TV affiche un PIN : entre seulement ce code."
-        ));
-
-        LinearLayout status = statusCard(
-                paired ? "✓" : "TV",
-                paired ? "Philips prête" : "En attente d'association",
-                paired ? "Tu peux continuer vers les lumières Govee."
-                        : "Le PIN reste sur la TV quelques instants."
-        );
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, dp(132));
-        statusParams.setMargins(0, dp(22), 0, dp(18));
-        content.addView(status, statusParams);
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-
-        primary = button(
-                paired ? "RÉASSOCIER LA TV" : "CONNECTER LA TV",
-                0xff35255f,
-                0xff7655ff
-        );
-        primary.setOnClickListener(v -> beginPair());
-        actions.addView(primary, new LinearLayout.LayoutParams(dp(390), dp(62)));
+        content.addView(kicker("1  •  TV PHILIPS"));
+        content.addView(title(paired ? "TV connectée ✓" : "Connecte ta Philips en 1 minute"));
 
         if (paired) {
-            TvButton disconnect = button("DÉCONNECTER", 0xff211820, 0xff7d3b50);
+            content.addView(body(
+                    "L'autorisation est enregistrée sur cette TV. Le téléphone ne sera plus nécessaire."
+            ));
+
+            LinearLayout status = statusCard(
+                    "✓",
+                    "Philips prête",
+                    "AmbiGovee peut lire les couleurs Ambilight."
+            );
+            LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, dp(132));
+            statusParams.setMargins(0, dp(22), 0, dp(18));
+            content.addView(status, statusParams);
+
+            TvButton disconnect = button("DÉCONNECTER LA TV", 0xff211820, 0xff7d3b50);
             disconnect.setOnClickListener(v -> new AlertDialog.Builder(this)
                     .setTitle("Déconnecter la Philips ?")
-                    .setMessage("Les lumières Govee resteront enregistrées.")
+                    .setMessage("Les lumières Govee resteront enregistrées. Il faudra refaire l'association Philips.")
                     .setNegativeButton("ANNULER", null)
                     .setPositiveButton("DÉCONNECTER", (d, w) -> {
                         ConfigStore.disconnectPhilips(this);
+                        stopPairingBridge();
                         showStep(0);
                     })
                     .show());
 
-            LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(dp(240), dp(62));
-            dp.setMargins(dp(12), 0, 0, 0);
-            actions.addView(disconnect, dp);
+            LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(dp(300), dp(60));
+            content.addView(disconnect, dp);
 
-            primary.setNextFocusRightId(disconnect.getId());
-            disconnect.setNextFocusLeftId(primary.getId());
+            message = body("Tout est bon. Continue vers les lumières Govee.");
+            message.setTextColor(0xff79dfaa);
+            content.addView(message);
+
+            next.setEnabled(true);
             disconnect.setNextFocusDownId(next.getId());
+            next.post(() -> next.requestFocus());
+
+            // Laisse le temps à la réponse HTTP du téléphone d'arriver avant de fermer le serveur.
+            if (pairingBridge != null) {
+                content.postDelayed(this::stopPairingBridge, 1800);
+            }
+            return;
         }
 
-        content.addView(actions);
+        content.addView(body(
+                "Scanne le QR avec ton téléphone. Quand Philips affiche son PIN, laisse cette fenêtre ouverte et saisis le code sur ton téléphone."
+        ));
 
-        message = body(paired
-                ? "Tout est bon côté Philips."
-                : "Aucune adresse IP, clé ou identifiant à saisir à la main.");
-        message.setTextColor(paired ? 0xff79dfaa : 0xff9da7ba);
-        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
-        mp.setMargins(0, dp(16), 0, 0);
-        content.addView(message, mp);
+        String localUrl = null;
+        String bridgeError = null;
 
-        next.setEnabled(paired);
-        primary.setNextFocusDownId(next.getId());
-        primary.post(() -> primary.requestFocus());
-    }
+        try {
+            ensurePairingBridge();
+            localUrl = pairingBridge.url();
+        } catch (Exception e) {
+            bridgeError = shortError(e);
+        }
 
-    private void beginPair() {
-        primary.setEnabled(false);
-        message.setText("Demande envoyée… regarde le PIN affiché par la TV.");
-        message.setTextColor(0xffcbbfff);
+        if (localUrl != null) {
+            LinearLayout qrCard = new LinearLayout(this);
+            qrCard.setOrientation(LinearLayout.HORIZONTAL);
+            qrCard.setGravity(Gravity.CENTER_VERTICAL);
+            qrCard.setPadding(dp(22), dp(20), dp(22), dp(20));
+            qrCard.setBackground(roundGradient(0xff151a27, 0xff101521, 22, 0xff303a50));
 
-        executor.execute(() -> {
+            ImageView qr = new ImageView(this);
+            qr.setAdjustViewBounds(true);
+            qr.setScaleType(ImageView.ScaleType.FIT_CENTER);
             try {
-                PhilipsPairer pairer = new PhilipsPairer();
-                pending = pairer.begin();
-                runOnUiThread(() -> askPin(pairer));
+                qr.setImageBitmap(QrCode.create(localUrl, 520));
             } catch (Exception e) {
-                runOnUiThread(() -> {
-                    primary.setEnabled(true);
-                    message.setText("Impossible de démarrer l'association : " + shortError(e));
-                    message.setTextColor(0xffff8c8c);
-                    primary.requestFocus();
-                });
+                qr.setBackgroundColor(Color.WHITE);
             }
-        });
+
+            LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(dp(210), dp(210));
+            qrParams.setMargins(0, 0, dp(26), 0);
+            qrCard.addView(qr, qrParams);
+
+            LinearLayout instructions = new LinearLayout(this);
+            instructions.setOrientation(LinearLayout.VERTICAL);
+
+            instructions.addView(text("Sur ton téléphone", 21, Color.WHITE, true));
+            instructions.addView(smallStep("1", "Scanne ce QR code"));
+            instructions.addView(smallStep("2", "Appuie sur « Démarrer l'association »"));
+            instructions.addView(smallStep("3", "Entre le PIN sans fermer la fenêtre Philips"));
+
+            TextView local = text("Lien local : " + localUrl, 11, 0xff737e92, false);
+            local.setMaxLines(2);
+            LinearLayout.LayoutParams localParams = new LinearLayout.LayoutParams(-1, -2);
+            localParams.setMargins(0, dp(10), 0, 0);
+            instructions.addView(local, localParams);
+
+            qrCard.addView(instructions, new LinearLayout.LayoutParams(0, -2, 1));
+
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, dp(250));
+            cardParams.setMargins(0, dp(20), 0, dp(16));
+            content.addView(qrCard, cardParams);
+
+            primary = button("↻  NOUVEAU QR", 0xff171d2a, 0xff46526b);
+            primary.setOnClickListener(v -> {
+                stopPairingBridge();
+                showStep(0);
+            });
+            content.addView(primary, new LinearLayout.LayoutParams(dp(250), dp(58)));
+
+            String bridgeState = pairingBridge.state();
+            String bridgeMessage = pairingBridge.message();
+
+            if (PairingBridgeServer.STATE_ERROR.equals(bridgeState)
+                    || PairingBridgeServer.STATE_EXPIRED.equals(bridgeState)) {
+                message = body(bridgeMessage);
+                message.setTextColor(PairingBridgeServer.STATE_EXPIRED.equals(bridgeState)
+                        ? 0xffffc56d : 0xffff8c8c);
+            } else {
+                message = body(
+                        "Le téléphone sert uniquement à cette première association. TV et téléphone doivent être sur le même réseau."
+                );
+                message.setTextColor(0xff9da7ba);
+            }
+            content.addView(message);
+
+            next.setEnabled(false);
+            primary.setNextFocusDownId(back.getId());
+            primary.post(() -> primary.requestFocus());
+        } else {
+            LinearLayout status = statusCard(
+                    "!",
+                    "Impossible d'ouvrir le QR",
+                    bridgeError == null ? "Vérifie que la TV est connectée au réseau." : bridgeError
+            );
+            LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, dp(132));
+            statusParams.setMargins(0, dp(22), 0, dp(18));
+            content.addView(status, statusParams);
+
+            primary = button("RÉESSAYER", 0xff35255f, 0xff7655ff);
+            primary.setOnClickListener(v -> {
+                stopPairingBridge();
+                showStep(0);
+            });
+            content.addView(primary, new LinearLayout.LayoutParams(dp(260), dp(60)));
+
+            message = body("La TV doit être connectée au Wi-Fi ou en Ethernet sur le même réseau que ton téléphone.");
+            message.setTextColor(0xffffc56d);
+            content.addView(message);
+
+            next.setEnabled(false);
+            primary.post(() -> primary.requestFocus());
+        }
     }
 
-    private void askPin(PhilipsPairer pairer) {
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(0xff747f94);
-        input.setHint("PIN affiché sur la TV");
-        input.setSingleLine(true);
-        input.setTextSize(26);
-        input.setPadding(dp(18), dp(14), dp(18), dp(14));
+    private LinearLayout smallStep(String number, String label) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("PIN Philips")
-                .setMessage("Recopie le code affiché par la TV.")
-                .setView(input)
-                .setNegativeButton("ANNULER", (d, w) -> {
-                    primary.setEnabled(true);
-                    primary.requestFocus();
-                })
-                .setPositiveButton("CONNECTER", null)
-                .create();
+        TextView badge = text(number, 13, 0xffd5ccff, true);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackground(roundGradient(0xff33235b, 0xff251b42, 10, 0xff5e4d88));
+        row.addView(badge, new LinearLayout.LayoutParams(dp(30), dp(30)));
 
-        dialog.setOnShowListener(x -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String pin = input.getText().toString().trim();
-                if (pin.length() < 4) {
-                    input.setError("Entre le PIN complet");
-                    input.requestFocus();
-                    return;
-                }
+        TextView value = text(label, 15, 0xffd8deea, false);
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(0, -2, 1);
+        vp.setMargins(dp(12), 0, 0, 0);
+        row.addView(value, vp);
 
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                message.setText("Validation de la TV…");
-                message.setTextColor(0xffcbbfff);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(40));
+        rp.setMargins(0, dp(5), 0, 0);
+        row.setLayoutParams(rp);
+        return row;
+    }
 
-                executor.execute(() -> {
-                    try {
-                        PhilipsPairer.Result result = pairer.grant(pending, pin);
-                        ConfigStore.savePhilips(this, result.ip, result.user, result.key);
+    private void ensurePairingBridge() throws Exception {
+        if (pairingBridge != null) return;
+        pairingBridge = PairingBridgeServer.start(this);
+    }
 
-                        runOnUiThread(() -> {
-                            dialog.dismiss();
-                            // Passage automatique à l'étape suivante : moins de clics à la télécommande.
-                            showStep(1);
-                        });
-                    } catch (Exception e) {
-                        String error = shortError(e);
-                        runOnUiThread(() -> {
-                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-                            input.setError("Association refusée");
-                            input.requestFocus();
-                            message.setText("Échec Philips : " + error);
-                            message.setTextColor(0xffff8c8c);
-                        });
-                    }
-                });
-            });
+    private void stopPairingBridge() {
+        if (pairingBridge != null) {
+            try {
+                pairingBridge.close();
+            } catch (Exception ignored) {}
+            pairingBridge = null;
+        }
+    }
 
-            input.requestFocus();
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setSoftInputMode(
-                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
-                );
-            }
-        });
-
-        dialog.show();
+    private boolean isPhilipsPaired() {
+        return !ConfigStore.tvUser(this).isEmpty()
+                && !ConfigStore.tvKey(this).isEmpty();
     }
 
     private void showGovee() {
@@ -312,9 +359,10 @@ public class SetupActivity extends Activity {
         content.addView(kicker("2  •  LUMIÈRES GOVEE"));
         content.addView(title(configured.isEmpty()
                 ? "Ajoute tes lumières"
-                : configured.size() + " lumière" + (configured.size() > 1 ? "s" : "") + " enregistrée" + (configured.size() > 1 ? "s" : "")));
+                : configured.size() + " lumière" + (configured.size() > 1 ? "s" : "")
+                    + " enregistrée" + (configured.size() > 1 ? "s" : "")));
         content.addView(body(
-                "Active Contrôle LAN dans Govee Home, puis lance la recherche. AmbiGovee trouve les appareils automatiquement."
+                "Dans Govee Home, active Contrôle LAN pour chaque lumière à synchroniser. Ensuite AmbiGovee les trouve automatiquement."
         ));
 
         TvButton firstRow = null;
@@ -511,7 +559,7 @@ public class SetupActivity extends Activity {
         content.addView(kicker("3  •  TERMINÉ"));
         content.addView(title("AmbiGovee est prêt"));
         content.addView(body(
-                "On peut faire un test rapide avant de démarrer. La synchronisation n'allume jamais une lumière Govee qui est éteinte."
+                "On vérifie une dernière fois la Philips et les lumières Govee avant de démarrer."
         ));
 
         LinearLayout results = new LinearLayout(this);
@@ -549,6 +597,10 @@ public class SetupActivity extends Activity {
         actions.addView(primary, a);
         actions.addView(finish, a);
         content.addView(actions);
+
+        TextView safety = body("AmbiGovee n'allume jamais une lumière Govee que tu as éteinte.");
+        safety.setTextColor(0xff8f99ad);
+        content.addView(safety);
 
         primary.setNextFocusRightId(finish.getId());
         finish.setNextFocusLeftId(primary.getId());
@@ -639,6 +691,7 @@ public class SetupActivity extends Activity {
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(20), 0, 0, 0);
         texts.addView(text(heading, 20, Color.WHITE, true));
+
         TextView detailView = text(detail, 14, 0xff949db1, false);
         LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(-1, -2);
         detailParams.setMargins(0, dp(6), 0, 0);
@@ -706,9 +759,9 @@ public class SetupActivity extends Activity {
     }
 
     private String shortError(Exception e) {
-        String value = e.getMessage();
+        String value = e == null ? null : e.getMessage();
         if (value == null || value.trim().isEmpty()) {
-            return e.getClass().getSimpleName();
+            return e == null ? "Erreur inconnue" : e.getClass().getSimpleName();
         }
         value = value.replace('\n', ' ').replace('\r', ' ').trim();
         return value.length() > 120 ? value.substring(0, 120) + "…" : value;
@@ -716,6 +769,7 @@ public class SetupActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        stopPairingBridge();
         executor.shutdownNow();
 
         if (ConfigStore.isConfigured(this)) {

@@ -61,3 +61,8 @@ android {
         }
     }
 }
+
+dependencies {
+    // QR code généré entièrement en local pour l'association Philips via téléphone.
+    implementation 'com.google.zxing:core:3.5.3'
+}

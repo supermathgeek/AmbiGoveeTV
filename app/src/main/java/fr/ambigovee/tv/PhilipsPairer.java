@@ -33,12 +33,14 @@ import javax.net.ssl.X509TrustManager;
 /**
  * Association Philips JointSpace v6.
  *
- * Cette implémentation reproduit le flux qui fonctionne avec philipstv :
+ * Flux validé contre philipstv 3.x :
  * - pair/request sans authentification
- * - signature du PIN en HMAC-SHA256
+ * - signature PIN HMAC-SHA256
  * - pair/grant avec HTTP Digest
- * - prise en charge réelle de l'algorithme Digest annoncé par la TV
- *   (MD5, MD5-sess, SHA/SHA-1, SHA-256, SHA-512)
+ * - algorithmes Digest MD5 / MD5-sess / SHA-1 / SHA-256 / SHA-512
+ *
+ * Le timeout renvoyé par la TV est conservé afin que l'interface téléphone puisse
+ * afficher le temps restant et relancer proprement une association expirée.
  */
 final class PhilipsPairer {
 
@@ -56,12 +58,33 @@ final class PhilipsPairer {
         final String deviceId;
         final String authKey;
         final long timestamp;
+        final int timeoutSeconds;
+        final long expiresAtMs;
 
-        Pending(String base, String deviceId, String authKey, long timestamp) {
+        Pending(
+                String base,
+                String deviceId,
+                String authKey,
+                long timestamp,
+                int timeoutSeconds,
+                long expiresAtMs
+        ) {
             this.base = base;
             this.deviceId = deviceId;
             this.authKey = authKey;
             this.timestamp = timestamp;
+            this.timeoutSeconds = timeoutSeconds;
+            this.expiresAtMs = expiresAtMs;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() >= expiresAtMs;
+        }
+
+        int secondsLeft() {
+            long remaining = expiresAtMs - System.currentTimeMillis();
+            if (remaining <= 0L) return 0;
+            return (int) Math.max(1L, (remaining + 999L) / 1000L);
         }
     }
 
@@ -132,11 +155,19 @@ final class PhilipsPairer {
 
         String authKey = json.optString("auth_key", "").trim();
         long timestamp = json.optLong("timestamp", 0L);
+        int timeout = json.optInt("timeout", 60);
+
         if (authKey.isEmpty() || timestamp <= 0L) {
             throw new IllegalStateException("Réponse d'association Philips incomplète");
         }
 
-        return new Pending(base, deviceId, authKey, timestamp);
+        // Les firmwares Philips annoncent généralement plusieurs dizaines de secondes.
+        // On borne uniquement les valeurs manifestement invalides, sans prolonger le délai TV.
+        if (timeout <= 0) timeout = 60;
+        timeout = Math.min(timeout, 300);
+
+        long expiresAt = System.currentTimeMillis() + (timeout * 1000L);
+        return new Pending(base, deviceId, authKey, timestamp, timeout, expiresAt);
     }
 
     Result grant(Pending pending, String pin) throws Exception {
@@ -144,8 +175,12 @@ final class PhilipsPairer {
             throw new IllegalStateException("Association expirée. Relance l'association.");
         }
 
+        if (pending.isExpired()) {
+            throw new IllegalStateException("Credential timed out");
+        }
+
         pin = pin == null ? "" : pin.trim();
-        if (pin.length() < 4) {
+        if (!pin.matches("[0-9]{4,8}")) {
             throw new IllegalArgumentException("PIN invalide");
         }
 
@@ -160,8 +195,8 @@ final class PhilipsPairer {
 
         String path = "/6/pair/grant";
 
-        // Comme requests.HTTPDigestAuth : premier envoi sans Authorization,
-        // puis nouvelle tentative avec le challenge Digest renvoyé par la TV.
+        // requests.HTTPDigestAuth fait d'abord une requête sans Authorization,
+        // puis rejoue la même requête avec le challenge Digest reçu en 401.
         Raw first = post(pending.base, path, body.toString(), null);
         Raw response = first;
 
@@ -174,7 +209,7 @@ final class PhilipsPairer {
                     buildAuthorization(challenge, "POST", path, pending.deviceId, pending.authKey, 1)
             );
 
-            // Si le nonce a changé/stale, on accepte un nouveau challenge une fois.
+            // Certains firmwares renouvellent le nonce lors de la première réponse authentifiée.
             if (response.code == HttpURLConnection.HTTP_UNAUTHORIZED
                     && response.wwwAuthenticate != null
                     && !response.wwwAuthenticate.trim().isEmpty()) {
@@ -226,7 +261,9 @@ final class PhilipsPairer {
         byte[] digest = mac.doFinal((String.valueOf(timestamp) + pin).getBytes(StandardCharsets.UTF_8));
 
         StringBuilder hex = new StringBuilder();
-        for (byte b : digest) hex.append(String.format(Locale.US, "%02x", b & 0xff));
+        for (byte b : digest) {
+            hex.append(String.format(Locale.US, "%02x", b & 0xff));
+        }
 
         return Base64.encodeToString(
                 hex.toString().getBytes(StandardCharsets.UTF_8),
@@ -246,6 +283,7 @@ final class PhilipsPairer {
         c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         c.setRequestProperty("Accept", "application/json");
         c.setRequestProperty("Connection", "keep-alive");
+
         if (authorization != null && !authorization.isEmpty()) {
             c.setRequestProperty("Authorization", authorization);
         }
@@ -269,11 +307,11 @@ final class PhilipsPairer {
         }
 
         Map<String, String> parts = new HashMap<>();
-        Matcher m = DIGEST_PAIR.matcher(header);
-        while (m.find()) {
+        Matcher matcher = DIGEST_PAIR.matcher(header);
+        while (matcher.find()) {
             parts.put(
-                    m.group(1).toLowerCase(Locale.US),
-                    m.group(2) != null ? m.group(2) : m.group(3)
+                    matcher.group(1).toLowerCase(Locale.US),
+                    matcher.group(2) != null ? matcher.group(2) : matcher.group(3)
             );
         }
 
@@ -292,6 +330,7 @@ final class PhilipsPairer {
                     break;
                 }
             }
+
             if (qop == null) {
                 throw new IllegalStateException("Digest qop non supporté : " + rawQop);
             }
@@ -307,7 +346,7 @@ final class PhilipsPairer {
     }
 
     private String buildAuthorization(
-            DigestChallenge c,
+            DigestChallenge challenge,
             String method,
             String uri,
             String username,
@@ -315,9 +354,9 @@ final class PhilipsPairer {
             int nonceCount
     ) throws Exception {
 
-        String algorithm = c.algorithm == null || c.algorithm.trim().isEmpty()
+        String algorithm = challenge.algorithm == null || challenge.algorithm.trim().isEmpty()
                 ? "MD5"
-                : c.algorithm.trim();
+                : challenge.algorithm.trim();
 
         String hashAlgorithm = digestHashAlgorithm(algorithm);
         boolean sessionAlgorithm = algorithm.toUpperCase(Locale.US).endsWith("-SESS");
@@ -325,39 +364,44 @@ final class PhilipsPairer {
         String cnonce = randomHex(16);
         String nc = String.format(Locale.US, "%08x", Math.max(1, nonceCount));
 
-        String ha1 = hashHex(hashAlgorithm, username + ":" + c.realm + ":" + password);
+        String ha1 = hashHex(hashAlgorithm,
+                username + ":" + challenge.realm + ":" + password);
+
         if (sessionAlgorithm) {
-            ha1 = hashHex(hashAlgorithm, ha1 + ":" + c.nonce + ":" + cnonce);
+            ha1 = hashHex(hashAlgorithm,
+                    ha1 + ":" + challenge.nonce + ":" + cnonce);
         }
 
         String ha2 = hashHex(hashAlgorithm, method + ":" + uri);
-        String response = c.qop != null
+        String response = challenge.qop != null
                 ? hashHex(hashAlgorithm,
-                    ha1 + ":" + c.nonce + ":" + nc + ":" + cnonce + ":" + c.qop + ":" + ha2)
-                : hashHex(hashAlgorithm, ha1 + ":" + c.nonce + ":" + ha2);
+                    ha1 + ":" + challenge.nonce + ":" + nc + ":" + cnonce + ":"
+                            + challenge.qop + ":" + ha2)
+                : hashHex(hashAlgorithm,
+                    ha1 + ":" + challenge.nonce + ":" + ha2);
 
-        StringBuilder h = new StringBuilder("Digest ");
-        h.append("username=\"").append(username).append("\"");
-        h.append(", realm=\"").append(c.realm).append("\"");
-        h.append(", nonce=\"").append(c.nonce).append("\"");
-        h.append(", uri=\"").append(uri).append("\"");
-        h.append(", response=\"").append(response).append("\"");
+        StringBuilder header = new StringBuilder("Digest ");
+        header.append("username=\"").append(username).append("\"");
+        header.append(", realm=\"").append(challenge.realm).append("\"");
+        header.append(", nonce=\"").append(challenge.nonce).append("\"");
+        header.append(", uri=\"").append(uri).append("\"");
+        header.append(", response=\"").append(response).append("\"");
 
-        if (c.opaque != null && !c.opaque.isEmpty()) {
-            h.append(", opaque=\"").append(c.opaque).append("\"");
+        if (challenge.opaque != null && !challenge.opaque.isEmpty()) {
+            header.append(", opaque=\"").append(challenge.opaque).append("\"");
         }
 
-        if (c.algorithm != null && !c.algorithm.trim().isEmpty()) {
-            h.append(", algorithm=\"").append(c.algorithm).append("\"");
+        if (challenge.algorithm != null && !challenge.algorithm.trim().isEmpty()) {
+            header.append(", algorithm=\"").append(challenge.algorithm).append("\"");
         }
 
-        if (c.qop != null) {
-            h.append(", qop=\"").append(c.qop).append("\"");
-            h.append(", nc=").append(nc);
-            h.append(", cnonce=\"").append(cnonce).append("\"");
+        if (challenge.qop != null) {
+            header.append(", qop=\"").append(challenge.qop).append("\"");
+            header.append(", nc=").append(nc);
+            header.append(", cnonce=\"").append(cnonce).append("\"");
         }
 
-        return h.toString();
+        return header.toString();
     }
 
     private static String digestHashAlgorithm(String algorithm) {
@@ -373,7 +417,9 @@ final class PhilipsPairer {
         byte[] result = MessageDigest.getInstance(algorithm)
                 .digest(value.getBytes(StandardCharsets.UTF_8));
         StringBuilder out = new StringBuilder();
-        for (byte b : result) out.append(String.format(Locale.US, "%02x", b & 0xff));
+        for (byte b : result) {
+            out.append(String.format(Locale.US, "%02x", b & 0xff));
+        }
         return out.toString();
     }
 
@@ -390,17 +436,22 @@ final class PhilipsPairer {
         byte[] data = new byte[bytes];
         random.nextBytes(data);
         StringBuilder out = new StringBuilder(bytes * 2);
-        for (byte b : data) out.append(String.format(Locale.US, "%02x", b & 0xff));
+        for (byte b : data) {
+            out.append(String.format(Locale.US, "%02x", b & 0xff));
+        }
         return out.toString();
     }
 
     private static String readAll(InputStream stream) throws Exception {
         if (stream == null) return "";
+
         StringBuilder out = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
-            while ((line = reader.readLine()) != null) out.append(line);
+            while ((line = reader.readLine()) != null) {
+                out.append(line);
+            }
         }
         return out.toString();
     }
@@ -408,7 +459,9 @@ final class PhilipsPairer {
     private static String details(String body) {
         if (body == null || body.trim().isEmpty()) return "";
         String value = body.replace('\n', ' ').replace('\r', ' ').trim();
-        if (value.length() > 160) value = value.substring(0, 160) + "…";
+        if (value.length() > 160) {
+            value = value.substring(0, 160) + "…";
+        }
         return " — " + value;
     }
 
