@@ -2,357 +2,250 @@
 
 # 🌈 AmbiGoveeTV
 
-### Philips Ambilight × Govee, directement depuis ta TV.
+### Ton Ambilight Philips, dans toute ta pièce.
 
-Synchronise les couleurs de ton **Philips Ambilight** avec tes éclairages **Govee compatibles LAN**, sans caméra supplémentaire et sans laisser un PC allumé.
+AmbiGoveeTV synchronise les couleurs de l'**Ambilight Philips** avec des éclairages **Govee compatibles LAN**, directement depuis Android TV / Google TV.
 
-<br>
-
-![Android TV](https://img.shields.io/badge/Android%20TV-compatible-3DDC84?logo=android&logoColor=white)
-![Google TV](https://img.shields.io/badge/Google%20TV-compatible-4285F4?logo=google&logoColor=white)
-![Local Network](https://img.shields.io/badge/Sync-Local%20Network-7C3AED)
-![License](https://img.shields.io/github/license/supermathgeek/AmbiGoveeTV)
-![Release](https://img.shields.io/github/v/release/supermathgeek/AmbiGoveeTV)
+**Pas de caméra. Pas de PC à laisser allumé. Pas de compte AmbiGovee.**
 
 <br>
 
-[📥 Télécharger Windows](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/AmbiGoveeTV-Windows.zip)
-&nbsp;•&nbsp;
+[![Android TV](https://img.shields.io/badge/Android%20TV-compatible-3DDC84?logo=android&logoColor=white)](#compatibilite)
+[![Google TV](https://img.shields.io/badge/Google%20TV-compatible-4285F4?logo=google&logoColor=white)](#compatibilite)
+[![Release](https://img.shields.io/github/v/release/supermathgeek/AmbiGoveeTV)](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest)
+[![License](https://img.shields.io/github/license/supermathgeek/AmbiGoveeTV)](LICENSE)
+
+<br>
+
+## [🪟 Installer sur Windows](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/INSTALLER_AMBIGOVEE_WINDOWS.bat)
+
 [📦 APK direct](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/AmbiGoveeTV.apk)
 &nbsp;•&nbsp;
-[🐛 Signaler un bug](https://github.com/supermathgeek/AmbiGoveeTV/issues)
+[📁 Pack Windows](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/AmbiGoveeTV-Windows.zip)
 &nbsp;•&nbsp;
-[💡 Proposer une idée](https://github.com/supermathgeek/AmbiGoveeTV/issues)
+[🐛 Signaler un bug](https://github.com/supermathgeek/AmbiGoveeTV/issues)
 
 </div>
 
 ---
 
-## ✨ C'est quoi AmbiGoveeTV ?
-
-AmbiGoveeTV récupère les couleurs calculées par l'Ambilight d'un téléviseur Philips compatible et les envoie en temps réel à des éclairages Govee sur le réseau local.
+## ✨ Ce que fait AmbiGoveeTV
 
 ```text
 📺 Philips Ambilight
         ↓
    AmbiGoveeTV
         ↓
-💡 Govee LAN
+💡 Govee sur le réseau local
 ```
 
-Une fois installé sur la TV, **plus besoin de laisser un PC allumé**.
+AmbiGoveeTV lit les couleurs calculées par l'Ambilight de la TV puis les transmet aux lumières Govee compatibles via le réseau local.
+
+Une fois l'installation terminée, **le PC ne sert plus**.
+
+### Fonctionnalités
+
+- ⚡ synchronisation Ambilight → Govee en temps réel ;
+- 💡 plusieurs appareils Govee ;
+- 📍 zones **Pièce entière / Gauche / Haut / Droite / Bas** ;
+- 🎬 modes **Direct**, **Cinéma** et **Doux** ;
+- 🔒 une lampe éteinte par l'utilisateur **n'est jamais rallumée par AmbiGoveeTV** ;
+- 💾 restauration de la couleur et de la luminosité normales après la synchro ;
+- 🏠 synchronisation principale en **réseau local** ;
+- 🎮 interface pensée pour une télécommande Android TV ;
+- 🔄 vérification des mises à jour via GitHub Releases.
 
 ---
 
-## 🚀 Fonctionnalités
+# 🚀 Installation
 
-| Fonction | Description |
-|---|---|
-| ⚡ **Synchronisation en direct** | Les couleurs Govee suivent l'Ambilight de la TV |
-| 💡 **Plusieurs lampes** | Ajoute, connecte, déconnecte ou supprime chaque Govee indépendamment |
-| 📍 **Positionnement** | Plafond, pièce entière, gauche, haut, droite ou bas |
-| 🎬 **3 modes** | Direct, Cinéma et Doux |
-| ✨ **Lumière adaptative** | Le rendu lumineux suit automatiquement l'Ambilight, sans réglage manuel |
-| 🏠 **Réseau local** | La synchronisation principale ne dépend pas du cloud |
-| 💾 **Restauration** | Les lampes retrouvent leur couleur normale quand la TV s'arrête |
-| 🔒 **Respect de l'état des lampes** | AmbiGoveeTV n'allume pas une lampe que tu avais éteinte |
-| 🔄 **Mises à jour** | Vérification des nouvelles versions via GitHub Releases |
-| 🎮 **Interface TV** | Navigation pensée pour une télécommande |
+## Méthode recommandée — Windows
 
----
+Télécharge simplement :
 
-## 💡 Plusieurs lampes, plusieurs zones
+### 👉 [INSTALLER_AMBIGOVEE_WINDOWS.bat](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest/download/INSTALLER_AMBIGOVEE_WINDOWS.bat)
 
-Chaque lampe peut suivre une partie différente de l'Ambilight.
+Puis double-clique dessus.
 
-```text
-                 💡 Lampe haute
-                       ↑
+L'installateur :
 
-💡 Lampe gauche ←  📺 TV  → 💡 Lampe droite
+1. télécharge automatiquement la dernière APK officielle ;
+2. télécharge Android Platform Tools si nécessaire ;
+3. te demande l'adresse IP de la TV ;
+4. se connecte à Android TV ;
+5. installe ou met à jour AmbiGoveeTV ;
+6. détecte le **profil Android réellement utilisé par la TV** ;
+7. active l'application sur ce profil ;
+8. lance AmbiGoveeTV.
 
-                  💡 Plafonnier
-                ambiance globale
-```
+Tu n'as **aucune commande ADB ou PowerShell à taper**.
 
-Exemple :
-
-- un plafonnier → **Pièce entière / Plafond**
-- une lampe à gauche → **Gauche**
-- une lampe à droite → **Droite**
-- un bandeau au-dessus → **Haut**
+> Windows peut afficher un avertissement pour un script téléchargé depuis Internet. Le fichier est lisible directement dans ce dépôt et ne contient aucune clé privée.
 
 ---
 
+## Avant l'installation
 
-## 🔌 Connecter / déconnecter un appareil
+Sur la TV Philips :
 
-Dans **Gérer les appareils**, chaque Govee peut être :
+1. ouvre **Paramètres** ;
+2. va dans **À propos** ;
+3. appuie 7 fois sur **Build Android TV / Numéro de build** ;
+4. ouvre **Options pour les développeurs** ;
+5. active **Débogage USB / ADB** ;
+6. vérifie que le PC et la TV sont sur le même réseau.
 
-- **connecté** à la synchronisation ;
-- **déconnecté** temporairement sans perdre sa position ;
-- déplacé vers une autre zone Ambilight ;
-- supprimé définitivement d’AmbiGoveeTV.
+L'installateur demandera ensuite seulement l'**adresse IP locale de la TV**.
 
-La TV Philips peut également être réassociée ou déconnectée sans supprimer les appareils Govee enregistrés.
-
----
-
-## 🎬 Modes d'éclairage
-
-### ⚡ Direct
-Réaction rapide aux changements de scène.
-
-Idéal pour :
-- jeux vidéo
-- contenus dynamiques
-- effet proche de l'Ambilight
-
-### 🎥 Cinéma
-Transitions plus fluides et moins agressives.
-
-Idéal pour :
-- films
-- séries
-- visionnage dans le noir
-
-### 🌙 Doux
-Effet discret avec transitions lentes.
-
-Idéal pour :
-- ambiance
-- soirée
-- lumière d'accompagnement
+Après l'installation, le débogage ADB peut être désactivé : **AmbiGoveeTV n'en a pas besoin pour fonctionner**.
 
 ---
 
-## 📺 Compatibilité
+# 🧭 Première configuration
 
-AmbiGoveeTV vise les appareils qui disposent réellement des fonctions nécessaires.
+L'installation dans AmbiGovee est volontairement courte.
 
-### Philips
+## 1 — Philips
 
-La TV doit notamment avoir :
+AmbiGovee affiche un **QR code** sur la TV.
 
-- **Ambilight**
-- **Android TV ou Google TV**
-- une API **Philips JointSpace** compatible
-- l'accès réseau local aux données Ambilight
+1. scanne-le avec ton téléphone ;
+2. appuie sur **Démarrer l'association** ;
+3. Philips affiche un PIN sur la TV ;
+4. **laisse la fenêtre Philips ouverte** ;
+5. entre le PIN sur ton téléphone.
 
-### Govee
+L'association est ensuite conservée localement sur la TV. Le téléphone n'est plus nécessaire.
 
-L'appareil doit notamment avoir :
+## 2 — Govee
 
-- un éclairage RGB/RGBIC compatible avec le **contrôle LAN**
-- l'option **Contrôle LAN** disponible dans Govee Home
-- une connexion au même réseau local que la TV
+Dans l'application **Govee Home**, active **Contrôle LAN** pour chaque lumière compatible.
 
-> Un modèle non encore listé peut fonctionner.  
-> Si tu testes AmbiGoveeTV sur un nouvel appareil, ouvre une Issue pour partager le résultat.
+Dans AmbiGovee :
 
----
+1. choisis **Rechercher une lumière** ;
+2. sélectionne l'appareil ;
+3. choisis sa position ;
+4. répète si tu as plusieurs lumières.
 
-## 🛠️ Installation
+## 3 — Terminé
 
-### 1. Préparer la TV Philips
+Lance la synchro et choisis ton mode :
 
-Sur la TV :
-
-1. ouvre **Paramètres**
-2. va dans **À propos**
-3. appuie plusieurs fois sur **Build Android TV** pour activer les options développeur
-4. ouvre **Options pour les développeurs**
-5. active **Débogage USB / ADB**
+- **Direct** — rapide et réactif ;
+- **Cinéma** — plus fluide ;
+- **Doux** — transitions plus lentes.
 
 ---
 
-### 2. Préparer Govee
+# 💡 Comportement des lumières
 
-Dans **Govee Home** :
+AmbiGoveeTV est conçu pour ne pas prendre le contrôle de ta pièce de façon agressive.
 
-1. ouvre l'appareil à utiliser
-2. ouvre ses paramètres
-3. active **Contrôle LAN**
-
----
-
-### 3. Installer AmbiGoveeTV
-
-Télécharge la dernière version ici :
-
-👉 **[GitHub Releases](https://github.com/supermathgeek/AmbiGoveeTV/releases/latest)**
-
-Puis :
-
-- **Windows :** clique sur le bouton Télécharger Windows en haut de cette page ;
-- **APK :** utilise APK direct si tu veux installer manuellement avec ADB.
+- une lumière déjà éteinte reste éteinte ;
+- si tu éteins une lumière pendant un film, AmbiGovee ne la rallume pas ;
+- la couleur et la luminosité normales sont mémorisées avant la synchro ;
+- lorsque la TV se met en veille ou que tu quittes la synchro, AmbiGovee restaure l'état lumineux normal lorsqu'il peut le faire sans rallumer une lampe éteinte.
 
 ---
 
-## 🧭 Première configuration
+# 📺 Compatibilité
 
-L'application est pensée pour guider l'utilisateur étape par étape :
+## Philips
 
-1. détection de la TV Philips
-2. association à la TV
-3. affichage d'un PIN sur la Philips
-4. saisie du PIN dans AmbiGoveeTV
-5. demande d'activation du contrôle LAN Govee
-6. scan automatique du réseau
-7. sélection des appareils Govee
-8. choix de leur position
-9. test de synchronisation
-10. terminé
+Il faut notamment :
 
-L'objectif est que l'utilisateur **n'ait pas à récupérer manuellement une clé Philips ou un Device ID**.
+- une TV **Philips Ambilight** ;
+- **Android TV** ou **Google TV** ;
+- une API **JointSpace** compatible ;
+- l'accès local aux couleurs Ambilight.
 
----
+## Govee
 
-## 🔄 Mises à jour
+Il faut notamment :
 
-**Important :** AmbiGoveeTV se met à jour depuis les **GitHub Releases**, pas depuis un simple commit. Une nouvelle version doit être publiée avec un `versionCode` supérieur et un asset nommé exactement `AmbiGoveeTV.apk`.
+- un appareil couleur compatible avec le **contrôle LAN Govee** ;
+- l'option **Contrôle LAN** disponible dans Govee Home ;
+- la TV et le Govee sur le même réseau local.
 
-Une modification du code seule ne déclenche pas de mise à jour sur la TV.
+La compatibilité est basée sur les capacités de l'appareil, pas sur une liste fermée de modèles.
 
-AmbiGoveeTV peut vérifier les nouvelles versions disponibles sur GitHub.
-
-Quand une nouvelle version est publiée :
-
-```text
-Version installée : 1.6.0
-Nouvelle version : 1.6.1
-```
-
-l'application peut proposer la mise à jour.
-
-Selon Android TV / Google TV, une confirmation peut être demandée avant l'installation.
+Si un appareil fonctionne ou ne fonctionne pas, tu peux ouvrir une [Issue](https://github.com/supermathgeek/AmbiGoveeTV/issues).
 
 ---
 
-## 🔐 Confidentialité
+# 🔄 Mises à jour
 
-AmbiGoveeTV est conçu pour fonctionner principalement sur le **réseau local**.
+AmbiGoveeTV vérifie les nouvelles **GitHub Releases**.
 
-Les informations nécessaires à l'association Philips et aux appareils Govee sont stockées localement sur la TV.
+Pour qu'une mise à jour soit reconnue :
 
-Aucune donnée personnelle ne doit être publiée dans ce dépôt.
+- la release doit avoir une version supérieure ;
+- l'APK doit garder le package `fr.ambigovee.tv` ;
+- toutes les versions doivent être signées avec la **même clé Android** ;
+- la release doit contenir l'asset stable `AmbiGoveeTV.apk`.
 
-Voir aussi : [`PRIVACY.md`](PRIVACY.md)
-
----
-
-## 🐛 Signaler un bug
-
-Ouvre une **Issue** en indiquant si possible :
-
-- modèle exact de la TV Philips
-- version Android TV / Google TV
-- modèle exact du Govee
-- version d'AmbiGoveeTV
-- ce qui devait se passer
-- ce qui s'est réellement passé
-- captures d'écran ou logs utiles
-
-Merci de ne jamais publier :
-
-- clés Philips
-- mots de passe
-- adresses MAC
-- informations privées de ton réseau
-
-👉 **[Créer une Issue](https://github.com/supermathgeek/AmbiGoveeTV/issues/new)**
+Android TV / Google TV peut demander une confirmation d'installation ou l'autorisation d'installer depuis cette source. AmbiGovee ne contourne pas les protections Android.
 
 ---
 
-## 💡 Une idée d'amélioration ?
+# 🔐 Confidentialité
 
-Les idées sont les bienvenues.
+La synchronisation Philips ↔ AmbiGovee ↔ Govee fonctionne principalement sur le **réseau local**.
 
-Tu peux proposer :
+Les identifiants nécessaires à l'association Philips et la configuration Govee sont stockés localement sur la TV.
 
-- de nouveaux modes
-- une meilleure interface
-- de nouvelles positions de lampes
-- la compatibilité avec de nouveaux appareils
-- des optimisations
-- une installation plus simple
-- de nouvelles automatisations
+Ne publie jamais dans une Issue :
 
-👉 **[Proposer une idée](https://github.com/supermathgeek/AmbiGoveeTV/issues/new)**
+- une clé d'association Philips ;
+- un mot de passe ;
+- une adresse MAC ;
+- des informations privées de ton réseau.
 
----
-
-## 🤝 Contributions
-
-**AmbiGoveeTV est un projet créé et maintenu par [supermathgeek](https://github.com/supermathgeek).**
-
-Le projet reste sous ma direction, mais les idées, retours, rapports de bugs et contributions sont les bienvenus.
-
-Tu peux :
-
-- ouvrir une **Issue**
-- proposer une **Pull Request**
-- tester l'application sur de nouveaux appareils
-- améliorer la documentation
-
-Les Pull Requests peuvent être discutées, modifiées ou refusées afin de garder le projet cohérent, stable et simple à utiliser.
+Voir [`PRIVACY.md`](PRIVACY.md).
 
 ---
 
-## ⭐ Soutenir le projet
+# 🐛 Bug / idée / contribution
 
-Si AmbiGoveeTV t'est utile :
+Pour un bug, indique si possible :
 
-- mets une ⭐ au dépôt
-- partage tes tests de compatibilité
-- signale les bugs
-- propose tes idées
+- modèle de la TV ;
+- version Android TV / Google TV ;
+- modèle du Govee ;
+- version d'AmbiGoveeTV ;
+- comportement attendu ;
+- comportement observé ;
+- capture ou log utile sans donnée privée.
 
-Ça aide énormément le projet à évoluer.
+👉 [Ouvrir une Issue](https://github.com/supermathgeek/AmbiGoveeTV/issues/new)
+
+Les Pull Requests sont les bienvenues, mais le projet reste maintenu et dirigé par **supermathgeek** afin de garder une expérience cohérente et simple.
 
 ---
 
-## ⚠️ Projet indépendant
+# ⚠️ Projet indépendant
 
 AmbiGoveeTV est un projet communautaire indépendant.
 
 Il n'est **ni affilié, ni sponsorisé, ni approuvé par Philips ou Govee**.
 
-Le fonctionnement peut varier selon les modèles, firmwares et mises à jour des fabricants.
+Les noms et marques appartiennent à leurs propriétaires respectifs.
 
 ---
 
-## 📄 Licence
+# 📄 Licence
 
 Copyright © 2026 **supermathgeek**
 
-AmbiGoveeTV est distribué sous la licence disponible dans [`LICENSE`](LICENSE).
-
-Les éventuelles mentions de projets ou travaux tiers sont regroupées dans [`NOTICE.md`](NOTICE.md).
+Voir [`LICENSE`](LICENSE) et [`NOTICE.md`](NOTICE.md).
 
 ---
 
 <div align="center">
 
-### 🌈 AmbiGoveeTV
+## 🌈 AmbiGoveeTV
 
 **Ton Ambilight. Toute ta pièce.**
 
 </div>
-
-
-## 🔄 Mise à jour automatique sur la TV
-
-AmbiGoveeTV est relié aux **GitHub Releases** de ce dépôt. À chaque lancement, l'application vérifie la dernière version publiée.
-
-Si une nouvelle version contient l'asset **`AmbiGoveeTV.apk`**, l'application la télécharge directement sur la TV puis lance l'installateur Android. La première fois, Android peut demander d'autoriser AmbiGoveeTV à installer des applications provenant de cette source.
-
-> Android TV / Google TV peut toujours demander une confirmation avant l'installation. Une application Android normale ne peut pas contourner cette protection.
-
-Pour qu'une mise à jour remplace correctement l'ancienne version :
-
-- augmente `versionCode` ;
-- augmente `versionName` ;
-- publie une nouvelle **GitHub Release** ;
-- joins un fichier nommé exactement `AmbiGoveeTV.apk` ;
-- signe toutes les versions avec **la même clé Android**.

@@ -1,0 +1,31 @@
+AMBIGOVEE - NETTOYAGE GITHUB
+
+À SUPPRIMER DE LA RACINE (anciens installateurs / docs obsolètes) :
+- INSTALLER_SUR_TV.bat
+- METTRE_A_JOUR.bat
+- MISE_A_JOUR_1.6.1.txt
+- installer.ps1
+
+À GARDER :
+- INSTALLER_AMBIGOVEE_WINDOWS.bat  <- installation publique recommandée
+- README.md
+- LICENSE
+- NOTICE.md
+- PRIVACY.md
+- app/
+- release-installer/
+- .github/workflows/
+
+IMPORTANT :
+- Ne publie aucune IP, MAC, clé Philips ou autre donnée locale.
+- Ne recrée jamais la clé de signature Android.
+- Toutes les releases doivent conserver l'asset stable AmbiGoveeTV.apk.
+- La release doit aussi publier INSTALLER_AMBIGOVEE_WINDOWS.bat.
+
+INTERFACE :
+Je recommande de faire le nettoyage visuel dans une version séparée après validation :
+- masquer le lien local technique sous le QR ;
+- remplacer "NOUVEAU QR" par une action secondaire discrète ;
+- transformer les lignes Govee en vraies cartes nom / zone / état ;
+- remplacer les AlertDialog Android par des panneaux cohérents avec la DA ;
+- alléger l'écran principal (moins de texte simultané, états plus visuels).

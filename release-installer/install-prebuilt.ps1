@@ -4,6 +4,7 @@ $ProgressPreference = "SilentlyContinue"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Tools = Join-Path $Root ".platform-tools"
 $Package = "fr.ambigovee.tv"
+$MainActivity = "fr.ambigovee.tv/.MainActivity"
 
 function Step($text) {
     Write-Host ""
@@ -11,9 +12,8 @@ function Step($text) {
 }
 
 function Ensure-Adb {
-    if (Test-Path (Join-Path $Tools "adb.exe")) {
-        return
-    }
+    $adb = Join-Path $Tools "adb.exe"
+    if (Test-Path $adb) { return $adb }
 
     Step "Telechargement Android Platform Tools"
 
@@ -25,99 +25,93 @@ function Ensure-Adb {
         -OutFile $zip `
         -UseBasicParsing
 
-    if (Test-Path $tmp) {
-        Remove-Item $tmp -Recurse -Force
-    }
-
+    if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
     Expand-Archive $zip $tmp -Force
 
-    if (Test-Path $Tools) {
-        Remove-Item $Tools -Recurse -Force
-    }
-
+    if (Test-Path $Tools) { Remove-Item $Tools -Recurse -Force }
     Move-Item (Join-Path $tmp "platform-tools") $Tools
+
     Remove-Item $tmp -Recurse -Force
     Remove-Item $zip -Force
+
+    return (Join-Path $Tools "adb.exe")
 }
 
-function Wait-PackageReady([string]$adb) {
-    for ($i = 0; $i -lt 20; $i++) {
-        $path = (& $adb shell pm path $Package 2>&1 | Out-String).Trim()
-
-        if ($path -match "^package:") {
-            Start-Sleep -Milliseconds 800
-            return
-        }
-
-        Start-Sleep -Milliseconds 700
-    }
-
-    throw "Android n'a pas rendu AmbiGovee disponible apres l'installation."
+function Get-ActiveUser([string]$adb) {
+    try {
+        $raw = (& $adb shell am get-current-user 2>&1 | Out-String).Trim()
+        if ($raw -match '^\d+$') { return [int]$raw }
+    } catch {}
+    return 0
 }
 
-function Launch-AmbiGovee([string]$adb) {
-    Step "Lancement AmbiGovee"
+function Package-VisibleForUser([string]$adb, [int]$userId) {
+    $visible = (& $adb shell pm list packages --user $userId $Package 2>&1 | Out-String)
+    return ($visible -match 'package:fr\.ambigovee\.tv')
+}
 
-    # IMPORTANT :
-    # On ne force plus ".MainActivity".
-    # Android resout lui-meme l'activite MAIN + LEANBACK_LAUNCHER.
-    for ($attempt = 1; $attempt -le 4; $attempt++) {
-        $result = & $adb shell am start -W `
-            -a android.intent.action.MAIN `
-            -c android.intent.category.LEANBACK_LAUNCHER `
-            -p $Package 2>&1 | Out-String
-
-        Write-Host $result
-
-        if ($result -match "Status:\s+ok" -or
-            $result -match "Activity:" -or
-            $result -match "cmp=fr\.ambigovee\.tv") {
-            return
+function Ensure-PackageForUser([string]$adb, [int]$userId) {
+    # Sur certaines Philips/Android TV, adb install -r remplace bien l'APK globale
+    # mais conserve "installed=false" sur le profil qui affiche réellement l'interface.
+    # install-existing rattache alors le même APK au bon utilisateur SANS désinstaller.
+    try {
+        $result = (& $adb shell cmd package install-existing --user $userId $Package 2>&1 | Out-String).Trim()
+        if ($result) {
+            Write-Host "  Profil $userId : $result"
         }
+    } catch {}
 
-        Start-Sleep -Seconds 2
-    }
+    try {
+        & $adb shell pm enable --user $userId $Package 2>$null | Out-Null
+    } catch {}
 
-    # Fallback Android TV : lancement par le launcher, sans nom de classe.
-    $fallback = & $adb shell monkey `
-        -p $Package `
+    Start-Sleep -Milliseconds 350
+    return (Package-VisibleForUser $adb $userId)
+}
+
+function Launch-ForUser([string]$adb, [int]$userId) {
+    # 1) Intent officiel Android TV.
+    $result = (& $adb shell am start --user $userId -W `
+        -a android.intent.action.MAIN `
         -c android.intent.category.LEANBACK_LAUNCHER `
-        1 2>&1 | Out-String
+        -p $Package 2>&1 | Out-String)
 
-    Write-Host $fallback
+    Write-Host $result
 
-    if ($fallback -match "Events injected:\s+1") {
-        return
+    if ($result -match 'Status:\s+ok' -or $result -match 'Activity:') {
+        return $true
     }
 
-    throw "AmbiGovee est installe mais Android TV ne trouve pas son activite de lancement."
+    # 2) Fallback explicite. Le manifest AmbiGovee déclare cette Activity.
+    $result = (& $adb shell am start --user $userId -W -n $MainActivity 2>&1 | Out-String)
+    Write-Host $result
+
+    return ($result -match 'Status:\s+ok' -or $result -match 'Activity:')
 }
 
 Write-Host "=============================================" -ForegroundColor Magenta
 Write-Host "  AmbiGovee - installation rapide sur TV" -ForegroundColor Magenta
 Write-Host "=============================================" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "Sur la TV, fais d'abord :" -ForegroundColor Yellow
-Write-Host "  1. Parametres > A propos > Build Android TV : appuie 7 fois."
-Write-Host "  2. Options pour les developpeurs > Debogage USB / ADB : active."
-Write-Host "  3. Verifie que PC et TV sont sur le meme reseau."
+Write-Host "Sur la TV :" -ForegroundColor Yellow
+Write-Host "  1. Active les Options pour les developpeurs."
+Write-Host "  2. Active le Debogage USB / ADB."
+Write-Host "  3. PC et TV doivent etre sur le meme reseau."
 Write-Host ""
 Read-Host "Quand c'est fait, appuie sur Entree" | Out-Null
 
-$apk = Get-ChildItem $Root -Filter "AmbiGovee*.apk" |
+$apk = Get-ChildItem $Root -Filter "AmbiGovee*.apk" -File |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
 if (!$apk) {
-    throw "APK AmbiGovee introuvable dans le dossier de l'installateur."
+    throw "AmbiGoveeTV.apk est introuvable dans ce dossier."
 }
 
-Ensure-Adb
-
-$adb = Join-Path $Tools "adb.exe"
+$adb = Ensure-Adb
 & $adb start-server | Out-Null
 
-$tvIp = Read-Host "Adresse IP de la TV Philips (exemple 192.168.1.100)"
+$tvIp = Read-Host "Adresse IP de la TV Philips"
 if ([string]::IsNullOrWhiteSpace($tvIp)) {
     throw "Adresse IP obligatoire."
 }
@@ -128,8 +122,9 @@ Start-Sleep -Seconds 1
 
 $devices = & $adb devices | Out-String
 if ($devices -notmatch ([regex]::Escape("$tvIp`:5555") + "\s+device")) {
-    Write-Host "Regarde la TV et accepte 'Autoriser le debogage USB'." -ForegroundColor Yellow
+    Write-Host "Accepte l'autorisation de debogage sur la TV." -ForegroundColor Yellow
     Read-Host "Puis appuie sur Entree" | Out-Null
+
     & $adb connect "$tvIp`:5555" | Out-Host
     Start-Sleep -Seconds 1
 
@@ -139,17 +134,17 @@ if ($devices -notmatch ([regex]::Escape("$tvIp`:5555") + "\s+device")) {
     }
 }
 
-Step "Preparation de la mise a jour"
+$activeUser = Get-ActiveUser $adb
+$targetUsers = @($activeUser, 0) | Select-Object -Unique
 
-# Coupe l'ancienne version avant de la remplacer.
-# C'est indispensable pour la transition depuis la 1.7.1 qui pouvait
-# relancer son propre PackageInstaller en boucle.
-& $adb shell am force-stop $Package | Out-Null
+Write-Host "Profil Android actif : $activeUser"
 
-# Bloque temporairement l'auto-install de l'ancienne version pendant le remplacement.
-& $adb shell appops set $Package REQUEST_INSTALL_PACKAGES ignore 2>$null | Out-Null
-
-Start-Sleep -Milliseconds 600
+Step "Arret de l'ancienne version"
+foreach ($userId in $targetUsers) {
+    try {
+        & $adb shell am force-stop --user $userId $Package 2>$null | Out-Null
+    } catch {}
+}
 
 Step "Installation / mise a jour"
 $out = & $adb install -r $apk.FullName 2>&1 | Out-String
@@ -157,33 +152,63 @@ Write-Host $out
 
 if ($out -notmatch "Success") {
     if ($out -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
-        throw "Signature Android differente. Ne desinstalle pas sans sauvegarde : utilise une APK signee avec la cle officielle AmbiGovee."
+        throw "La signature Android ne correspond pas. Utilise uniquement l'APK officielle AmbiGovee."
     }
-
-    throw "Installation ADB impossible."
+    throw "L'installation ADB a echoue."
 }
 
-# adb install peut rendre la main avant que le launcher de certaines TV
-# ait fini de rafraichir le package. On attend explicitement.
-Wait-PackageReady $adb
+Start-Sleep -Seconds 1
 
-Step "Verification de l'installation"
-$version = & $adb shell dumpsys package $Package 2>&1 |
+Step "Activation sur le bon profil TV"
+$readyUsers = @()
+
+foreach ($userId in $targetUsers) {
+    if (Ensure-PackageForUser $adb $userId) {
+        $readyUsers += [int]$userId
+        Write-Host "  Profil $userId : AmbiGovee disponible" -ForegroundColor Green
+    } else {
+        Write-Host "  Profil $userId : non utilise" -ForegroundColor DarkGray
+    }
+}
+
+$readyUsers = $readyUsers | Select-Object -Unique
+
+if (!$readyUsers -or $readyUsers.Count -eq 0) {
+    Write-Host ""
+    Write-Host "Diagnostic Android :" -ForegroundColor Yellow
+    & $adb shell dumpsys package $Package | Out-Host
+    throw "L'APK est installee mais aucun profil TV ne voit AmbiGovee."
+}
+
+Step "Version installee"
+& $adb shell dumpsys package $Package |
     Select-String "versionName=|versionCode=" |
-    Select-Object -First 2
+    Select-Object -First 2 |
+    ForEach-Object { Write-Host $_ }
 
-$version | ForEach-Object { Write-Host $_ }
+Step "Lancement AmbiGovee"
+$launched = $false
 
-# La nouvelle version peut a nouveau gerer ses futures mises a jour.
-& $adb shell appops set $Package REQUEST_INSTALL_PACKAGES allow 2>$null | Out-Null
+# Le profil actif est prioritaire, puis user 0 en secours pour les TV multi-profils.
+foreach ($userId in $readyUsers) {
+    if (Launch-ForUser $adb $userId) {
+        Write-Host "AmbiGovee lance sur le profil $userId." -ForegroundColor Green
+        $launched = $true
+        break
+    }
+}
 
-Start-Sleep -Seconds 2
-
-Launch-AmbiGovee $adb
+if (!$launched) {
+    throw "AmbiGovee est installe mais Android TV refuse de lancer l'interface."
+}
 
 Write-Host ""
-Write-Host "AmbiGovee est installe et lance." -ForegroundColor Green
-Write-Host "La premiere configuration se fait ensuite directement sur la TV." -ForegroundColor Green
-Write-Host "Pour Philips, suis le QR code affiche par AmbiGovee puis saisis le PIN depuis ton telephone."
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "  AmbiGovee est pret" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Apres installation, tu peux desactiver le Debogage USB / ADB." -ForegroundColor Yellow
+Write-Host "La suite se fait sur la TV :" -ForegroundColor White
+Write-Host "  Philips : scanne le QR code puis saisis le PIN sur ton telephone."
+Write-Host "  Govee   : active Controle LAN dans Govee Home puis lance la recherche."
+Write-Host ""
+Write-Host "Tu peux ensuite desactiver le Debogage USB / ADB." -ForegroundColor Yellow
