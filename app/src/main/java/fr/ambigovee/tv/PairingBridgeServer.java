@@ -365,53 +365,7 @@ final class PairingBridgeServer implements Closeable {
     }
 
     private String phonePage() {
-        String escapedUrl = html(url());
-
-        return "<!doctype html>"
-                + "<html lang=\"fr\"><head><meta charset=\"utf-8\">"
-                + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1\">"
-                + "<meta name=\"theme-color\" content=\"#0b0f18\">"
-                + "<title>AmbiGovee — Philips</title>"
-                + "<style>"
-                + "*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#06080d,#0b0f18 48%,#211238);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;align-items:center;justify-content:center;padding:22px}"
-                + ".wrap{width:min(520px,100%)}.brand{font-size:15px;color:#b9a9ff;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}"
-                + ".card{background:rgba(20,26,38,.96);border:1px solid #30394d;border-radius:26px;padding:25px;box-shadow:0 24px 70px rgba(0,0,0,.38)}"
-                + "h1{font-size:30px;line-height:1.08;margin:0 0 10px}.sub{color:#a9b2c4;font-size:16px;line-height:1.45;margin:0 0 22px}"
-                + ".step{display:flex;gap:13px;align-items:flex-start;padding:14px 0;border-top:1px solid #293144}.num{min-width:34px;height:34px;border-radius:12px;background:#35255f;color:#d8ceff;font-weight:800;display:flex;align-items:center;justify-content:center}.txt{padding-top:5px;color:#d9dfeb}.hint{font-size:13px;color:#8994a8;margin-top:4px}"
-                + "button{width:100%;border:0;border-radius:18px;padding:16px 18px;background:linear-gradient(135deg,#5d3fd7,#7a5cff);color:white;font-size:17px;font-weight:800;margin-top:18px;box-shadow:0 9px 24px rgba(93,63,215,.28)}button:disabled{opacity:.5}"
-                + "input{width:100%;border:1px solid #4a5570;background:#0d121c;color:#fff;border-radius:18px;padding:17px 18px;font-size:28px;letter-spacing:.18em;text-align:center;outline:none;margin-top:10px}input:focus{border-color:#9079ff;box-shadow:0 0 0 3px rgba(144,121,255,.16)}"
-                + ".status{margin-top:18px;border-radius:18px;padding:14px 16px;background:#101722;border:1px solid #293144;color:#c9d1df;line-height:1.4}.ok{border-color:#2d7659;background:#10231c;color:#8fe0b7}.warn{border-color:#7b6332;background:#241e11;color:#ffd087}.bad{border-color:#7b3949;background:#261319;color:#ff9dad}.hidden{display:none}.timer{font-size:13px;color:#a99bdf;margin-top:9px}.privacy{text-align:center;color:#747f93;font-size:12px;line-height:1.4;margin-top:15px}.url{word-break:break-all;color:#8f99ad;font-size:11px;text-align:center;margin-top:12px}"
-                + "</style></head><body><main class=\"wrap\"><div class=\"brand\">AmbiGovee</div><section class=\"card\">"
-                + "<h1 id=\"title\">Connecte ta TV Philips</h1>"
-                + "<p class=\"sub\" id=\"subtitle\">Ton téléphone sert uniquement pendant cette première association.</p>"
-                + "<div id=\"intro\">"
-                + "<div class=\"step\"><div class=\"num\">1</div><div class=\"txt\">Appuie sur <b>Démarrer l'association</b>.<div class=\"hint\">La TV affichera immédiatement un PIN Philips.</div></div></div>"
-                + "<div class=\"step\"><div class=\"num\">2</div><div class=\"txt\">Laisse la fenêtre du PIN <b>ouverte sur la TV</b>.<div class=\"hint\">Ne touche pas à « Fermer ».</div></div></div>"
-                + "<div class=\"step\"><div class=\"num\">3</div><div class=\"txt\">Tape le PIN ici sur ton téléphone.</div></div>"
-                + "<button id=\"start\" type=\"button\">DÉMARRER L'ASSOCIATION</button></div>"
-                + "<form id=\"pinForm\" class=\"hidden\"><input id=\"pin\" name=\"pin\" inputmode=\"numeric\" pattern=\"[0-9]*\" autocomplete=\"one-time-code\" maxlength=\"8\" placeholder=\"PIN\"><div class=\"timer\" id=\"timer\"></div><button id=\"send\" type=\"submit\">CONNECTER LA TV</button></form>"
-                + "<button id=\"retry\" class=\"hidden\" type=\"button\">RECOMMENCER</button>"
-                + "<div id=\"status\" class=\"status\">Prêt.</div>"
-                + "<div class=\"privacy\">Connexion locale uniquement • aucune image de la TV ni identifiant Philips n'est envoyé sur Internet.</div>"
-                + "<div class=\"url\">" + escapedUrl + "</div>"
-                + "</section></main>"
-                + "<script>"
-                + "const base=location.pathname.replace(/\\/$/,'');const qs=s=>document.querySelector(s);const intro=qs('#intro'),form=qs('#pinForm'),retry=qs('#retry'),statusBox=qs('#status'),title=qs('#title'),subtitle=qs('#subtitle'),start=qs('#start'),send=qs('#send'),pin=qs('#pin'),timer=qs('#timer');"
-                + "async function call(path,opt){const r=await fetch(base+path,Object.assign({cache:'no-store'},opt||{}));return await r.json()}"
-                + "function busy(v){start.disabled=v;send.disabled=v;retry.disabled=v}"
-                + "function render(s){busy(false);statusBox.textContent=s.message||'';statusBox.className='status';timer.textContent='';"
-                + "if(s.state==='ready'){intro.classList.remove('hidden');form.classList.add('hidden');retry.classList.add('hidden');title.textContent='Connecte ta TV Philips';subtitle.textContent='Ton téléphone sert uniquement pendant cette première association.';}"
-                + "else if(s.state==='starting'){intro.classList.add('hidden');form.classList.add('hidden');retry.classList.add('hidden');busy(true);title.textContent='Ouverture sur la TV…';subtitle.textContent='Attends une seconde.';}"
-                + "else if(s.state==='waiting_pin'){intro.classList.add('hidden');form.classList.remove('hidden');retry.classList.add('hidden');title.textContent='Entre le PIN affiché sur la TV';subtitle.textContent='Ne ferme surtout pas la fenêtre Philips sur la TV.';timer.textContent=s.seconds_left>0?'Code valable encore environ '+s.seconds_left+' s':'';if(document.activeElement!==pin)pin.focus();}"
-                + "else if(s.state==='verifying'){intro.classList.add('hidden');form.classList.remove('hidden');retry.classList.add('hidden');busy(true);title.textContent='Connexion en cours…';subtitle.textContent='AmbiGovee valide le code avec la TV.';}"
-                + "else if(s.state==='success'||s.paired){intro.classList.add('hidden');form.classList.add('hidden');retry.classList.add('hidden');statusBox.classList.add('ok');title.textContent='TV connectée ✓';subtitle.textContent='C’est terminé. Tu peux reposer ton téléphone et continuer sur la TV.';}"
-                + "else{intro.classList.add('hidden');form.classList.add('hidden');retry.classList.remove('hidden');statusBox.classList.add(s.state==='expired'?'warn':'bad');title.textContent=s.state==='expired'?'Le code a expiré':'Association impossible';subtitle.textContent='On peut relancer proprement avec un nouveau PIN.';}"
-                + "}"
-                + "start.onclick=async()=>{busy(true);try{render(await call('/start',{method:'POST'}))}catch(e){statusBox.textContent='Connexion locale interrompue. Réessaie.';statusBox.className='status bad';busy(false)}};"
-                + "retry.onclick=async()=>{busy(true);pin.value='';try{render(await call('/start',{method:'POST'}))}catch(e){busy(false)}};"
-                + "form.onsubmit=async e=>{e.preventDefault();const v=pin.value.trim();if(!/^\\d{4,8}$/.test(v)){statusBox.textContent='Entre le PIN complet.';statusBox.className='status warn';return}busy(true);try{render(await call('/pin',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'pin='+encodeURIComponent(v)}))}catch(err){statusBox.textContent='Connexion locale interrompue. Réessaie.';statusBox.className='status bad';busy(false)}};"
-                + "async function poll(){try{render(await call('/status'))}catch(e){}setTimeout(poll,700)}poll();"
-                + "</script></body></html>";
+        return PairingPhonePage.render();
     }
 
     private static int parseContentLength(String value) {
